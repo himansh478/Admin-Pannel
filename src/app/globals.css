@@ -1,0 +1,153 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* BRAND COLORS */
+  --mehroon: #B82E44;
+  --dark-mehroon: #7C1B2A;
+  --deep-mehroon: #5E121F;
+
+  /* PEACH COLORS */
+  --peach: #FFC7B8;
+  --soft-peach: #FFE2D8;
+  --light-peach: #FFF0EA;
+
+  /* ROSE GOLD */
+  --rose-gold: #E8A58A;
+  --rose-gold-light: #F3C2AE;
+  --rose-gold-dark: #C77D62;
+
+  /* GOLD */
+  --gold: #D4AF37;
+  --gold-light: #E6C766;
+  --gold-dark: #A77C18;
+
+  /* NEUTRAL */
+  --ivory: #FFF8F0;
+  --cream: #F9EEE5;
+  --warm-white: #FFFDFC;
+
+  /* TEXT */
+  --text-primary: #35191C;
+  --text-secondary: #6F4A4A;
+  --text-light: #FFF8F0;
+
+  /* BORDERS */
+  --border-light: #E8CFC5;
+  --border-gold: rgba(212,175,55,0.45);
+
+  /* RADIUS SYSTEM */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+}
+
+body {
+  background-color: var(--ivory);
+  color: var(--text-primary);
+  font-family: var(--font-lato), Arial, sans-serif;
+}
+
+/* BUTTON SYSTEM */
+.btn-primary {
+  background-color: var(--mehroon);
+  color: var(--ivory);
+  border: 1px solid var(--mehroon);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--dark-mehroon);
+  border-color: var(--dark-mehroon);
+}
+
+.btn-gold {
+  background-color: var(--gold);
+  color: var(--dark-mehroon);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-gold:hover {
+  background-color: var(--gold-light);
+}
+
+.btn-peach {
+  background-color: var(--peach);
+  color: var(--mehroon);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-peach:hover {
+  background-color: var(--rose-gold-light);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--mehroon);
+  border: 1px solid var(--mehroon);
+  border-radius: var(--radius-md);
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  background-color: var(--mehroon);
+  color: var(--ivory);
+}
+
+/* PRODUCT CARD SYSTEM */
+.product-card {
+  background-color: var(--warm-white);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 30px rgba(72,12,20,0.08);
+  transition: all 0.3s ease;
+}
+
+.product-card:hover {
+  box-shadow: 0 12px 40px rgba(72,12,20,0.12);
+  border-color: var(--rose-gold);
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes marquee-reverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: marquee 75s linear infinite;
+}
+
+.animate-marquee-reverse {
+  display: flex;
+  width: max-content;
+  animation: marquee-reverse 75s linear infinite;
+}
+
+.animate-marquee:hover,
+.animate-marquee-reverse:hover {
+  animation-play-state: paused;
+}
+
+
+

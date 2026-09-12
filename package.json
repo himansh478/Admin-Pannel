@@ -1,0 +1,30 @@
+{
+  "name": "kesharjewellers-admin-panel",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.9.5",
+    "next": "16.3.3",
+    "openai": "^7.10.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.4",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.3",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5"
+  }
+}
