@@ -10,15 +10,18 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { STORE_CATEGORIES, Product } from "@/types/product";
+import { fetchFromAPI } from "@/services/api";
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterCategory, setFilterCategory] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [stockEdits, setStockEdits] = useState<Record<string, number>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Editable stock map: product.id -> stock value
+  const [stockEdits, setStockEdits] = useState<Record<string, number>>({});
 
   const showToast = (type: "success" | "error", text: string) => {
     setStatusMessage({ type, text });
@@ -28,9 +31,8 @@ export default function InventoryPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/products");
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchFromAPI("/api/products");
+      if (data && (data.success || Array.isArray(data.products))) {
         const list: Product[] = data.products || [];
         setProducts(list);
 
@@ -66,21 +68,20 @@ export default function InventoryPage() {
 
     try {
       setSavingId(id);
-      const res = await fetch("/api/inventory", {
-        method: "PATCH",
+      const data = await fetchFromAPI(`/api/products/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, stock: newStock }),
+        body: JSON.stringify({ stock: newStock }),
       });
 
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast("success", `Stock updated to ${newStock} pieces!`);
         // Update product in local state
         setProducts((prev) =>
           prev.map((p) => (p.id === id ? { ...p, stock: newStock } : p))
         );
       } else {
-        showToast("error", data.error || "Failed to update stock.");
+        showToast("error", data?.error || "Failed to update stock.");
       }
     } catch (error) {
       console.error("Failed to update stock", error);

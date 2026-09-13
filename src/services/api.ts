@@ -20,13 +20,13 @@ export function getBackendURL(endpoint: string): string {
 }
 
 /**
- * Unified fetch helper with automatic Express backend connection and fallback
+ * Unified fetch helper connecting directly to Express Backend Server (http://localhost:5000)
  */
 export async function fetchFromAPI(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<any> {
-  const primaryUrl = getBackendURL(endpoint);
+  const targetUrl = getBackendURL(endpoint);
 
   let token = "";
   if (typeof window !== "undefined") {
@@ -47,7 +47,7 @@ export async function fetchFromAPI(
   }
 
   try {
-    const res = await fetch(primaryUrl, {
+    const res = await fetch(targetUrl, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -60,20 +60,9 @@ export async function fetchFromAPI(
     if (data) {
       return data;
     }
+    return { success: res.ok };
   } catch (err) {
-    console.warn(`Express Backend request failed for ${primaryUrl}, trying local route fallback...`, err);
+    console.error(`Express Backend request failed for ${targetUrl}:`, err);
+    return { success: false, error: "Backend server connection error. Make sure backend on port 5000 is running." };
   }
-
-  // Fallback to local Next.js API route (/api/...)
-  const fallbackUrl = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-  const resFallback = await fetch(fallbackUrl, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-      ...(options.headers || {}),
-    },
-  });
-
-  return await resFallback.json();
 }

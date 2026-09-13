@@ -63,12 +63,11 @@ export default function UsersManagementPage() {
 
     try {
       setActionLoadingId(id);
-      const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
+      const data = await fetchFromAPI(`/api/users/${id}`, { method: "DELETE" });
+      if (data && data.success) {
         setUsers((prev) => prev.filter((u) => u.id !== id));
       } else {
-        alert(data.error || "Failed to delete user account");
+        alert(data?.error || "Failed to delete user account");
       }
     } catch (err) {
       console.error("Delete user error:", err);
@@ -82,18 +81,17 @@ export default function UsersManagementPage() {
     const newRole: "user" | "admin" = currentRole === "admin" ? "user" : "admin";
     try {
       setActionLoadingId(id);
-      const res = await fetch("/api/users", {
+      const data = await fetchFromAPI("/api/users", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, role: newRole }),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         setUsers((prev) =>
           prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
         );
       } else {
-        alert(data.error || "Failed to update user role");
+        alert(data?.error || "Failed to update user role");
       }
     } catch (err) {
       console.error("Update role error:", err);

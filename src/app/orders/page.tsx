@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from "react";
 import StatCard from "@/components/admin/StatCard";
 import { STORE_CATEGORIES } from "@/types/product";
+import { fetchFromAPI } from "@/services/api";
 
 type OrderStatus = "pending" | "confirmed" | "shipped" | "delivered" | "cancelled";
 
@@ -26,16 +27,18 @@ interface Order {
   customerPhone: string;
   customerEmail?: string;
   customerAddress?: string;
-  notes?: string;
   items: OrderItem[];
   totalAmount: number;
   status: OrderStatus;
-  createdAt: string;
+  notes?: string;
+  createdAt?: string;
 }
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<OrderStatus | "All">("All");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -62,9 +65,8 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/orders");
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchFromAPI("/api/orders");
+      if (data && (data.success || Array.isArray(data.orders))) {
         setOrders(data.orders || []);
       }
     } catch (error) {
@@ -93,13 +95,13 @@ export default function OrdersPage() {
     if (nextStatus === currentStatus) return;
 
     try {
-      const res = await fetch("/api/orders", {
-        method: "PATCH",
+      const data = await fetchFromAPI("/api/orders", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: nextStatus }),
       });
 
-      if (res.ok) {
+      if (data && data.success) {
         setOrders((prev) =>
           prev.map((o) => (o.id === id ? { ...o, status: nextStatus } : o))
         );
@@ -115,11 +117,10 @@ export default function OrdersPage() {
   const handleDeleteOrder = async (id: string) => {
     if (!confirm("Are you sure you want to delete this order record?")) return;
     try {
-      const res = await fetch(`/api/orders?id=${encodeURIComponent(id)}`, {
+      const data = await fetchFromAPI(`/api/orders/${id}`, {
         method: "DELETE",
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast("success", "Order record deleted.");
         fetchOrders();
       }
@@ -159,7 +160,7 @@ export default function OrdersPage() {
 
     try {
       setIsLoading(true);
-      const res = await fetch("/api/orders", {
+      const data = await fetchFromAPI("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -169,8 +170,7 @@ export default function OrdersPage() {
         }),
       });
 
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast("success", "New order booked successfully!");
         setShowAddModal(false);
         setFormData({
@@ -183,7 +183,7 @@ export default function OrdersPage() {
         setFormItems([{ productName: "", category: "rings", quantity: 1, price: 0 }]);
         fetchOrders();
       } else {
-        showToast("error", data.error || "Failed to create order.");
+        showToast("error", data?.error || "Failed to create order.");
       }
     } catch (error) {
       console.error("Failed to create order", error);
@@ -332,7 +332,7 @@ export default function OrdersPage() {
                       </button>
                     </td>
                     <td className="p-3 text-[#6F4A4A]">
-                      {new Date(order.createdAt).toLocaleDateString("en-IN")}
+                      {new Date(order.createdAt || Date.now()).toLocaleDateString("en-IN")}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -368,7 +368,7 @@ export default function OrdersPage() {
                   Order Details #{selectedOrder.id.slice(-6).toUpperCase()}
                 </h3>
                 <span className="text-[10px] text-[#6F4A4A]">
-                  Placed on {new Date(selectedOrder.createdAt).toLocaleString("en-IN")}
+                  Placed on {new Date(selectedOrder.createdAt || Date.now()).toLocaleString("en-IN")}
                 </span>
               </div>
               <button
