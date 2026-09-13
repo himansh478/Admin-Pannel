@@ -50,15 +50,18 @@ export async function fetchFromAPI(
     authHeaders["Authorization"] = `Bearer ${token}`;
   }
 
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const headers = {
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...authHeaders,
+    ...(options.headers || {}),
+  };
+
   // 1. Primary Attempt
   try {
     const res = await fetch(targetUrl, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders,
-        ...(options.headers || {}),
-      },
+      headers,
     });
 
     const data = await res.json().catch(() => null);
@@ -80,11 +83,7 @@ export async function fetchFromAPI(
     await new Promise((r) => setTimeout(r, 1000));
     const resFallback = await fetch(fallbackUrl, {
       ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders,
-        ...(options.headers || {}),
-      },
+      headers,
     });
 
     const dataFallback = await resFallback.json().catch(() => null);

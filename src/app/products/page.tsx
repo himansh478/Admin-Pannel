@@ -50,23 +50,45 @@ export default function ProductsPage() {
     setTimeout(() => setStatusMessage(null), 5000);
   };
 
-  const handleImageFileChange = (
+  const handleImageFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "frontImage" | "backImage" | "modelImage"
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast("error", "Image file size should be less than 5MB");
+    if (file.size > 10 * 1024 * 1024) {
+      showToast("error", "Image file size should be less than 10MB");
       return;
     }
 
+    try {
+      showToast("success", "Uploading image to Cloudinary... ☁️");
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("folder", "products");
+
+      const res = await fetchFromAPI("/api/upload", {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      if (res && res.success && res.url) {
+        setFormData((prev) => ({ ...prev, [field]: res.url }));
+        showToast("success", "Image successfully saved to Cloudinary! ☁️✨");
+        return;
+      }
+    } catch (err) {
+      console.warn("Direct upload error, converting to data url fallback:", err);
+    }
+
+    // Fallback if upload endpoint fails
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
       if (result) {
         setFormData((prev) => ({ ...prev, [field]: result }));
+        showToast("success", "Image loaded (will auto-upload on save) ☁️");
       }
     };
     reader.readAsDataURL(file);
