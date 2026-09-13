@@ -5,21 +5,26 @@
  * ============================================================
  *
  * Automatically routes requests to Live Express Backend Server (https://my-jewellery-backend.onrender.com)
+ * with seamless fallback.
  */
 
-const BACKEND_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://my-jewellery-backend.onrender.com";
+const DEFAULT_RENDER_BACKEND = "https://my-jewellery-backend.onrender.com";
 
-export function getBackendURL(endpoint: string): string {
+const BACKEND_BASE_URL = (
+  process.env.NEXT_PUBLIC_BACKEND_URL || DEFAULT_RENDER_BACKEND
+).trim().replace(/\/+$/, "");
+
+export function getBackendURL(endpoint: string, base: string = BACKEND_BASE_URL): string {
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const cleanBase = base.replace(/\/+$/, "");
   if (cleanEndpoint.startsWith("/api")) {
-    return `${BACKEND_BASE_URL}${cleanEndpoint}`;
+    return `${cleanBase}${cleanEndpoint}`;
   }
-  return `${BACKEND_BASE_URL}/api${cleanEndpoint}`;
+  return `${cleanBase}/api${cleanEndpoint}`;
 }
 
 /**
- * Unified fetch helper connecting directly to Live Express Backend Server
+ * Unified fetch helper connecting directly to Express Backend Server
  */
 export async function fetchFromAPI(
   endpoint: string,
@@ -45,6 +50,7 @@ export async function fetchFromAPI(
     authHeaders["Authorization"] = `Bearer ${token}`;
   }
 
+  // 1. Primary Attempt
   try {
     const res = await fetch(targetUrl, {
       ...options,
@@ -61,27 +67,36 @@ export async function fetchFromAPI(
     }
     return { success: res.ok };
   } catch (err) {
-    console.warn(`Initial request failed for ${targetUrl}, retrying after 2s for Render cold-start...`, err);
-    // Automatic retry for Render cold start
-    try {
-      await new Promise((r) => setTimeout(r, 2000));
-      const resRetry = await fetch(targetUrl, {
-        ...options,
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders,
-          ...(options.headers || {}),
-        },
-      });
-      const dataRetry = await resRetry.json().catch(() => null);
-      if (dataRetry) return dataRetry;
-      return { success: resRetry.ok };
-    } catch (retryErr) {
-      console.error(`Retry failed for ${targetUrl}:`, retryErr);
-      return {
-        success: false,
-        error: "Backend connection failed. Render backend might be starting up, please try again in a few seconds.",
-      };
+    console.warn(`Primary backend request failed for ${targetUrl}:`, err);
+  }
+
+  // 2. Fallback Attempt (If primary URL was localhost or timed out, try Render production URL)
+  const fallbackUrl = getBackendURL(
+    endpoint,
+    targetUrl.includes("localhost") ? DEFAULT_RENDER_BACKEND : BACKEND_BASE_URL
+  );
+
+  try {
+    await new Promise((r) => setTimeout(r, 1000));
+    const resFallback = await fetch(fallbackUrl, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+        ...(options.headers || {}),
+      },
+    });
+
+    const dataFallback = await resFallback.json().catch(() => null);
+    if (dataFallback) {
+      return dataFallback;
     }
+    return { success: resFallback.ok };
+  } catch (fallbackErr) {
+    console.error(`Fallback backend request failed for ${fallbackUrl}:`, fallbackErr);
+    return {
+      success: false,
+      error: "Backend connection failed. Please check your network or try again in a few seconds.",
+    };
   }
 }
