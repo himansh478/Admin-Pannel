@@ -4,12 +4,11 @@
  * PURPOSE: Centralized API Service Helper for Keshar Jewellers Admin Panel
  * ============================================================
  *
- * Automatically routes requests to Express Backend Server (http://localhost:5000)
- * with seamless fallback to Next.js API endpoints.
+ * Automatically routes requests to Live Express Backend Server (https://my-jewellery-backend.onrender.com)
  */
 
 const BACKEND_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://my-jewellery-backend.onrender.com";
 
 export function getBackendURL(endpoint: string): string {
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
@@ -20,7 +19,7 @@ export function getBackendURL(endpoint: string): string {
 }
 
 /**
- * Unified fetch helper connecting directly to Express Backend Server (http://localhost:5000)
+ * Unified fetch helper connecting directly to Live Express Backend Server
  */
 export async function fetchFromAPI(
   endpoint: string,
@@ -63,6 +62,6 @@ export async function fetchFromAPI(
     return { success: res.ok };
   } catch (err) {
     console.error(`Express Backend request failed for ${targetUrl}:`, err);
-    return { success: false, error: "Backend server connection error. Make sure backend on port 5000 is running." };
+    return { success: false, error: "Backend server connection error. Make sure your Render backend service is live." };
   }
 }
