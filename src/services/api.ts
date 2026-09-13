@@ -61,7 +61,27 @@ export async function fetchFromAPI(
     }
     return { success: res.ok };
   } catch (err) {
-    console.error(`Express Backend request failed for ${targetUrl}:`, err);
-    return { success: false, error: "Backend server connection error. Make sure your Render backend service is live." };
+    console.warn(`Initial request failed for ${targetUrl}, retrying after 2s for Render cold-start...`, err);
+    // Automatic retry for Render cold start
+    try {
+      await new Promise((r) => setTimeout(r, 2000));
+      const resRetry = await fetch(targetUrl, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders,
+          ...(options.headers || {}),
+        },
+      });
+      const dataRetry = await resRetry.json().catch(() => null);
+      if (dataRetry) return dataRetry;
+      return { success: resRetry.ok };
+    } catch (retryErr) {
+      console.error(`Retry failed for ${targetUrl}:`, retryErr);
+      return {
+        success: false,
+        error: "Backend connection failed. Render backend might be starting up, please try again in a few seconds.",
+      };
+    }
   }
 }

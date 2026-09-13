@@ -351,7 +351,7 @@ export default function UsersManagementPage() {
                       <td className="py-4 px-6 text-[#6F4A4A]">
                         <span className="flex items-center gap-1 text-[11px]">
                           <IconClock className="w-3.5 h-3.5 text-[#A77C18]" />
-                          {new Date(user.createdAt).toLocaleDateString("en-IN", {
+                          {new Date(user.createdAt || Date.now()).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
