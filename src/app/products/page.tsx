@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { STORE_CATEGORIES, Product } from "@/types/product";
+import { fetchFromAPI } from "@/services/api";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,6 +24,8 @@ export default function ProductsPage() {
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [imageUploadMode, setImageUploadMode] = useState<"file" | "url">("file");
 
   // Single Product Form State
   const [formData, setFormData] = useState({
@@ -47,13 +50,36 @@ export default function ProductsPage() {
     setTimeout(() => setStatusMessage(null), 5000);
   };
 
+  const handleImageFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    field: "frontImage" | "backImage" | "modelImage"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      showToast("error", "Image file size should be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setFormData((prev) => ({ ...prev, [field]: result }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/products");
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetchFromAPI("/api/products");
+      if (data && (data.success || Array.isArray(data.products))) {
         setProducts(data.products || []);
+      } else {
+        setProducts([]);
       }
     } catch (error) {
       console.error("Failed to fetch products", error);
@@ -77,7 +103,7 @@ export default function ProductsPage() {
 
     try {
       setIsLoading(true);
-      const res = await fetch("/api/products", {
+      const data = await fetchFromAPI("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -88,8 +114,7 @@ export default function ProductsPage() {
         }),
       });
 
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast("success", "Product published to store successfully!");
         setShowAddModal(false);
         setFormData({
@@ -110,7 +135,7 @@ export default function ProductsPage() {
         });
         await fetchProducts();
       } else {
-        showToast("error", data.error || "Failed to save product.");
+        showToast("error", data?.error || "Failed to save product.");
       }
     } catch (error) {
       console.error("Failed to add product", error);
@@ -125,13 +150,12 @@ export default function ProductsPage() {
     if (!confirm("Are you sure you want to permanently delete this product?")) return;
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/products?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
+      const data = await fetchFromAPI(`/api/products?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (data && data.success) {
         showToast("success", "Product removed from catalog.");
         await fetchProducts();
       } else {
-        showToast("error", data.error || "Failed to delete.");
+        showToast("error", data?.error || "Failed to delete.");
       }
     } catch (error) {
       console.error("Failed to delete product", error);
@@ -296,13 +320,12 @@ export default function ProductsPage() {
     if (parsedCsvProducts.length === 0) return;
     try {
       setIsLoading(true);
-      const res = await fetch("/api/products", {
+      const data = await fetchFromAPI("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsedCsvProducts),
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast("success", `🎉 Uploaded ${parsedCsvProducts.length} products!`);
         setParsedCsvProducts([]);
         setCsvFileName("");
@@ -310,7 +333,7 @@ export default function ProductsPage() {
         if (fileInputRef.current) fileInputRef.current.value = "";
         await fetchProducts();
       } else {
-        showToast("error", data.error || "Failed to publish.");
+        showToast("error", data?.error || "Failed to publish.");
       }
     } catch (err) {
       console.error(err);
@@ -746,32 +769,153 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Image URLs */}
-              <div className="space-y-2 pt-2 border-t border-[#E8CFC5]">
-                <label className="block font-bold text-[#35191C]">
-                  10. Image URLs (Front, Back, Model)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Front Image URL (Cloudinary / Drive link / Web link)"
-                  value={formData.frontImage}
-                  onChange={(e) => setFormData({ ...formData, frontImage: e.target.value })}
-                  className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                />
-                <input
-                  type="text"
-                  placeholder="Back Image URL (optional)"
-                  value={formData.backImage}
-                  onChange={(e) => setFormData({ ...formData, backImage: e.target.value })}
-                  className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                />
-                <input
-                  type="text"
-                  placeholder="Model Wearing Image URL (optional)"
-                  value={formData.modelImage}
-                  onChange={(e) => setFormData({ ...formData, modelImage: e.target.value })}
-                  className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                />
+              {/* Product Photos (File Upload & URL toggle) */}
+              <div className="space-y-3 pt-3 border-t border-[#E8CFC5]">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-[#35191C]">
+                    10. Product Photos (Front, Back, Model)
+                  </label>
+                  <div className="flex items-center gap-1 bg-[#FFF0EA] p-1 rounded-lg border border-[#E8CFC5] text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode("file")}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        imageUploadMode === "file"
+                          ? "bg-[#B82E44] text-white shadow-sm"
+                          : "text-[#6F4A4A] hover:text-[#B82E44]"
+                      }`}
+                    >
+                      📁 Upload Files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode("url")}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        imageUploadMode === "url"
+                          ? "bg-[#B82E44] text-white shadow-sm"
+                          : "text-[#6F4A4A] hover:text-[#B82E44]"
+                      }`}
+                    >
+                      🔗 Image URLs
+                    </button>
+                  </div>
+                </div>
+
+                {imageUploadMode === "file" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Front Image */}
+                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
+                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Front Photo (Main)</span>
+                      {formData.frontImage ? (
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
+                          {/* eslint-disable-next-html-element-suppression */}
+                          <img src={formData.frontImage} alt="Front preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, frontImage: "" })}
+                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
+                          >
+                            Remove ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
+                          <span className="text-xl">📸</span>
+                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Front Pic</span>
+                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageFileChange(e, "frontImage")}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Back Image */}
+                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
+                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Back Photo (Optional)</span>
+                      {formData.backImage ? (
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
+                          <img src={formData.backImage} alt="Back preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, backImage: "" })}
+                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
+                          >
+                            Remove ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
+                          <span className="text-xl">📷</span>
+                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Back Pic</span>
+                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageFileChange(e, "backImage")}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    {/* Model Wearing Image */}
+                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
+                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Model Photo (Optional)</span>
+                      {formData.modelImage ? (
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
+                          <img src={formData.modelImage} alt="Model preview" className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, modelImage: "" })}
+                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
+                          >
+                            Remove ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
+                          <span className="text-xl">💃</span>
+                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Model Pic</span>
+                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageFileChange(e, "modelImage")}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Front Image URL (Cloudinary / Drive link / Web link)"
+                      value={formData.frontImage}
+                      onChange={(e) => setFormData({ ...formData, frontImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Back Image URL (optional)"
+                      value={formData.backImage}
+                      onChange={(e) => setFormData({ ...formData, backImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Model Wearing Image URL (optional)"
+                      value={formData.modelImage}
+                      onChange={(e) => setFormData({ ...formData, modelImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Actions */}

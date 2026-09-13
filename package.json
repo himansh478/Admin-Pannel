@@ -2,6 +2,19 @@
   "name": "kesharjewellers-admin-panel",
   "version": "1.0.0",
   "private": true,
+  "description": "A dedicated, production-ready Admin Management System for **Keshar Jewellers** built with **Next.js (App Router)**, **TypeScript**, **Tailwind CSS**, and **MongoDB Atlas (Mongoose)**.",
+  "homepage": "https://github.com/himansh478/Admin-Pannel#readme",
+  "bugs": {
+    "url": "https://github.com/himansh478/Admin-Pannel/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/himansh478/Admin-Pannel.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "tailwind.config.js",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
