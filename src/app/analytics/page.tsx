@@ -10,6 +10,7 @@
 import React, { useState, useEffect } from "react";
 import StatCard from "@/components/admin/StatCard";
 import { STORE_CATEGORIES, Product } from "@/types/product";
+import { fetchFromAPI } from "@/services/api";
 
 export default function AnalyticsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -23,14 +24,9 @@ export default function AnalyticsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [productsRes, ordersRes] = await Promise.all([
-        fetch("/api/products").catch(() => ({ ok: false, json: async () => ({ products: [] }) })),
-        fetch("/api/orders").catch(() => ({ ok: false, json: async () => ({ orders: [] }) })),
-      ]);
-
       const [productsData, ordersData] = await Promise.all([
-        productsRes.ok ? productsRes.json() : { products: [] },
-        ordersRes.ok ? ordersRes.json() : { orders: [] },
+        fetchFromAPI("/api/products").catch(() => ({ products: [] })),
+        fetchFromAPI("/api/orders").catch(() => ({ orders: [] })),
       ]);
 
       setProducts(productsData.products || []);

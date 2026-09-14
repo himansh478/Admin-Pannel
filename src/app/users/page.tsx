@@ -1,7 +1,7 @@
 /**
  * ============================================================
  * FILE: src/app/users/page.tsx (Registered Users Management Page)
- * PURPOSE: Control Center to view, search, and manage registered store users
+ * PURPOSE: Control Center to view, search, inspect full user details, and manage registered store users
  * ============================================================
  */
 
@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import StatCard from "@/components/admin/StatCard";
+import UserDetailModal, { UserAccount, UserOrder } from "@/components/admin/UserDetailModal";
 import { fetchFromAPI } from "@/services/api";
 import {
   IconUsers,
@@ -18,42 +19,52 @@ import {
   IconRefreshCw,
   IconShieldCheck,
   IconClock,
+  IconEye,
 } from "@/components/admin/Icons";
-
-interface UserAccount {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: "user" | "admin";
-  createdAt: string;
-}
 
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<UserAccount[]>([]);
+  const [orders, setOrders] = useState<UserOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "user" | "admin">("all");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // Fetch users from API endpoint (Express Backend or fallback API)
-  const fetchUsers = async () => {
+  // Modal State
+  const [selectedUser, setSelectedUser] = useState<UserAccount | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Fetch users and orders from API endpoint
+  const fetchUsersAndOrders = async () => {
     try {
       setLoading(true);
-      const data = await fetchFromAPI("/api/users");
-      if (data && data.success && Array.isArray(data.users)) {
-        setUsers(data.users);
+      const [userData, orderData] = await Promise.all([
+        fetchFromAPI("/api/users"),
+        fetchFromAPI("/api/orders").catch(() => ({ orders: [] })),
+      ]);
+
+      if (userData && userData.success && Array.isArray(userData.users)) {
+        setUsers(userData.users);
+      }
+      if (orderData && (orderData.success || Array.isArray(orderData.orders))) {
+        setOrders(orderData.orders || []);
       }
     } catch (err) {
-      console.error("Failed to fetch registered users:", err);
+      console.error("Failed to fetch registered users or orders:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    fetchUsersAndOrders();
   }, []);
+
+  // Open user detail modal
+  const handleOpenDetailModal = (user: UserAccount) => {
+    setSelectedUser(user);
+    setIsModalOpen(true);
+  };
 
   // Delete user handler
   const handleDeleteUser = async (id: string, name: string) => {
@@ -66,6 +77,10 @@ export default function UsersManagementPage() {
       const data = await fetchFromAPI(`/api/users/${id}`, { method: "DELETE" });
       if (data && data.success) {
         setUsers((prev) => prev.filter((u) => u.id !== id));
+        if (selectedUser?.id === id) {
+          setIsModalOpen(false);
+          setSelectedUser(null);
+        }
       } else {
         alert(data?.error || "Failed to delete user account");
       }
@@ -86,10 +101,14 @@ export default function UsersManagementPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, role: newRole }),
       });
+
       if (data && data.success) {
         setUsers((prev) =>
           prev.map((u) => (u.id === id ? { ...u, role: newRole } : u))
         );
+        if (selectedUser && selectedUser.id === id) {
+          setSelectedUser((prev) => (prev ? { ...prev, role: newRole } : null));
+        }
       } else {
         alert(data?.error || "Failed to update user role");
       }
@@ -143,22 +162,22 @@ export default function UsersManagementPage() {
           <div className="space-y-1.5">
             <span className="px-3 py-1 rounded-full bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#E6C766] text-xs font-bold uppercase tracking-widest inline-flex items-center gap-1.5">
               <IconUsers className="w-3.5 h-3.5" />
-              Member Directory ✦
+              Member Directory &amp; Inspection ✦
             </span>
             <h1 className="font-serif text-2xl sm:text-4xl text-white font-extrabold tracking-tight">
               Registered Users &amp; <span className="text-[#E6C766]">Admins</span>
             </h1>
             <p className="text-xs sm:text-sm text-[#E8CFC5]/90 font-light max-w-xl">
-              View all customer accounts registered on Keshar Jewellers portal, manage access privileges, and review contact details.
+              View customer profile details, email/phone contacts, purchase history, order values, and account privileges.
             </p>
           </div>
 
           <button
-            onClick={fetchUsers}
+            onClick={fetchUsersAndOrders}
             className="px-4 py-2.5 bg-[#4A2528]/80 hover:bg-[#5A3538] border border-[#E8CFC5]/30 text-[#FFF8F0] text-xs font-bold uppercase tracking-wider rounded-2xl transition-all flex items-center gap-2 shrink-0 shadow-sm"
           >
             <IconRefreshCw className="w-4 h-4 text-[#E6C766]" />
-            <span>Refresh Users</span>
+            <span>Refresh Directory</span>
           </button>
         </div>
       </div>
@@ -257,7 +276,7 @@ export default function UsersManagementPage() {
             </h3>
           </div>
           <span className="text-xs text-[#6F4A4A] font-medium">
-            Showing {filteredUsers.length} of {totalUsers} registered members
+            Click any row to inspect complete details &amp; order history
           </span>
         </div>
 
@@ -287,7 +306,8 @@ export default function UsersManagementPage() {
                   return (
                     <tr
                       key={user.id}
-                      className="hover:bg-[#FFF0EA]/50 transition-colors"
+                      className="hover:bg-[#FFF0EA]/70 transition-colors cursor-pointer"
+                      onClick={() => handleOpenDetailModal(user)}
                     >
                       {/* User Account & Avatar */}
                       <td className="py-4 px-6">
@@ -302,7 +322,7 @@ export default function UsersManagementPage() {
                             {initial}
                           </div>
                           <div>
-                            <p className="font-bold text-[#35191C] flex items-center gap-1.5">
+                            <p className="font-bold text-[#35191C] flex items-center gap-1.5 hover:text-[#B82E44] transition-colors">
                               {user.name}
                               {isAdmin && (
                                 <span className="text-[#A77C18]" title="Admin Account">
@@ -360,15 +380,19 @@ export default function UsersManagementPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 text-right">
+                      <td
+                        className="py-4 px-6 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <div className="flex items-center justify-end gap-2">
                           <button
-                            disabled={isActionLoading}
-                            onClick={() => handleToggleRole(user.id, user.role)}
-                            className="px-3 py-1.5 rounded-xl bg-[#FFF0EA] hover:bg-[#FFE2D8] border border-[#E8CFC5] text-[#7C1B2A] text-[11px] font-bold transition-all disabled:opacity-50"
+                            onClick={() => handleOpenDetailModal(user)}
+                            className="px-3 py-1.5 rounded-xl bg-[#35191C] hover:bg-[#4A2528] text-white text-[11px] font-bold transition-all flex items-center gap-1 shadow-xs"
                           >
-                            {isAdmin ? "Make Customer" : "Make Admin"}
+                            <IconEye className="w-3.5 h-3.5 text-[#E6C766]" />
+                            <span>View Details</span>
                           </button>
+
 
                           <button
                             disabled={isActionLoading}
@@ -387,6 +411,17 @@ export default function UsersManagementPage() {
           </div>
         )}
       </div>
+
+      {/* ── 5. USER DETAILS MODAL ── */}
+      <UserDetailModal
+        user={selectedUser}
+        orders={orders}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onToggleRole={handleToggleRole}
+        onDeleteUser={handleDeleteUser}
+        isActionLoading={Boolean(actionLoadingId)}
+      />
     </div>
   );
 }

@@ -8,13 +8,17 @@
  * with seamless fallback.
  */
 
+const DEFAULT_LOCAL_BACKEND = "http://localhost:5000";
 const DEFAULT_RENDER_BACKEND = "https://my-jewellery-backend.onrender.com";
 
-const BACKEND_BASE_URL = (
-  process.env.NEXT_PUBLIC_BACKEND_URL || DEFAULT_RENDER_BACKEND
-).trim().replace(/\/+$/, "");
+export function getBaseBackendUrl(): string {
+  if (process.env.NEXT_PUBLIC_BACKEND_URL) {
+    return process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "");
+  }
+  return DEFAULT_RENDER_BACKEND;
+}
 
-export function getBackendURL(endpoint: string, base: string = BACKEND_BASE_URL): string {
+export function getBackendURL(endpoint: string, base: string = getBaseBackendUrl()): string {
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   const cleanBase = base.replace(/\/+$/, "");
   if (cleanEndpoint.startsWith("/api")) {
@@ -76,7 +80,7 @@ export async function fetchFromAPI(
   // 2. Fallback Attempt (If primary URL was localhost or timed out, try Render production URL)
   const fallbackUrl = getBackendURL(
     endpoint,
-    targetUrl.includes("localhost") ? DEFAULT_RENDER_BACKEND : BACKEND_BASE_URL
+    targetUrl.includes("localhost") ? DEFAULT_RENDER_BACKEND : DEFAULT_LOCAL_BACKEND
   );
 
   try {

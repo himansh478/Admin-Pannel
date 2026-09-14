@@ -22,7 +22,6 @@ import {
   IconCrown,
   IconTag,
   IconClock,
-  IconBarChart2,
 } from "@/components/admin/Icons";
 
 interface CategorySummary {
@@ -33,18 +32,24 @@ interface CategorySummary {
 
 interface OrderItem {
   productName: string;
+  category?: string;
   quantity: number;
   price: number;
 }
 
 interface Order {
-  id: string;
+  id?: string;
+  _id?: string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string;
+  customerAddress?: string;
   totalAmount: number;
-  status: string;
-  createdAt: string;
+  status?: string;
+  orderStatus?: string;
+  createdAt?: string;
   items: OrderItem[];
+  notes?: string;
 }
 
 interface Product {
@@ -58,71 +63,93 @@ interface Product {
 
 export default function AdminDashboard() {
   const [categorySummary, setCategorySummary] = useState<CategorySummary[]>([]);
+  const [allOrdersList, setAllOrdersList] = useState<Order[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [refreshingOrders, setRefreshingOrders] = useState(false);
   const [lowStockProducts, setLowStockProducts] = useState<Product[]>([]);
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalStockCount, setTotalStockCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [selectedChartRange, setSelectedChartRange] = useState<"7d" | "30d" | "all">("30d");
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch Products from Express Backend API
+      const productsData = await fetchFromAPI("/api/products");
+      const products: Product[] = (productsData && productsData.products) || [];
+      setTotalProducts(products.length);
+
+      const totalStock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
+      setTotalStockCount(totalStock);
+
+      // Group by category
+      const categoryMap = new Map<string, { count: number; totalStock: number }>();
+      products.forEach((p) => {
+        const cat = p.category || "uncategorized";
+        const existing = categoryMap.get(cat) || { count: 0, totalStock: 0 };
+        categoryMap.set(cat, {
+          count: existing.count + 1,
+          totalStock: existing.totalStock + (p.stock || 0),
+        });
+      });
+
+      const summary = Array.from(categoryMap.entries())
+        .map(([category, data]) => ({ category, ...data }))
+        .sort((a, b) => b.count - a.count);
+      setCategorySummary(summary);
+
+      // Filter low stock (< 5 pcs)
+      const lowStock = products.filter((p) => (p.stock || 0) < 5);
+      setLowStockProducts(lowStock);
+
+      // 2. Fetch Orders from Express Backend API
+      try {
+        const ordersData = await fetchFromAPI("/api/orders");
+        const orders: Order[] = (ordersData && ordersData.orders) || [];
+        setAllOrdersList(orders);
+        setRecentOrders(orders.slice(0, 6));
+        setTotalOrders(orders.length);
+        setTotalRevenue(
+          orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
+        );
+      } catch {
+        setAllOrdersList([]);
+        setRecentOrders([]);
+        setTotalOrders(0);
+        setTotalRevenue(0);
+      }
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchDashboardData() {
-      try {
-        setLoading(true);
-
-        // 1. Fetch Products from Express Backend API
-        const productsData = await fetchFromAPI("/api/products");
-        const products: Product[] = (productsData && productsData.products) || [];
-        setTotalProducts(products.length);
-
-        const totalStock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
-        setTotalStockCount(totalStock);
-
-        // Group by category
-        const categoryMap = new Map<string, { count: number; totalStock: number }>();
-        products.forEach((p) => {
-          const cat = p.category || "uncategorized";
-          const existing = categoryMap.get(cat) || { count: 0, totalStock: 0 };
-          categoryMap.set(cat, {
-            count: existing.count + 1,
-            totalStock: existing.totalStock + (p.stock || 0),
-          });
-        });
-
-        const summary = Array.from(categoryMap.entries())
-          .map(([category, data]) => ({ category, ...data }))
-          .sort((a, b) => b.count - a.count);
-        setCategorySummary(summary);
-
-        // Filter low stock (< 5 pcs)
-        const lowStock = products.filter((p) => (p.stock || 0) < 5);
-        setLowStockProducts(lowStock.slice(0, 8));
-
-        // 2. Fetch Orders from Express Backend API
-        try {
-          const ordersData = await fetchFromAPI("/api/orders");
-          const orders: Order[] = (ordersData && ordersData.orders) || [];
-          setRecentOrders(orders.slice(0, 6));
-          setTotalOrders(orders.length);
-          setTotalRevenue(
-            orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
-          );
-        } catch {
-          setRecentOrders([]);
-          setTotalOrders(0);
-          setTotalRevenue(0);
-        }
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchDashboardData();
   }, []);
+
+  const handleRefreshOrders = async () => {
+    setRefreshingOrders(true);
+    try {
+      const ordersData = await fetchFromAPI("/api/orders");
+      const orders: Order[] = (ordersData && ordersData.orders) || [];
+      setAllOrdersList(orders);
+      setRecentOrders(orders.slice(0, 6));
+      setTotalOrders(orders.length);
+      setTotalRevenue(
+        orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0)
+      );
+    } catch (e) {
+      console.error("Failed to refetch orders:", e);
+    } finally {
+      setRefreshingOrders(false);
+    }
+  };
 
   // Time-based greeting
   const greeting = useMemo(() => {
@@ -142,18 +169,19 @@ export default function AdminDashboard() {
     });
   }, []);
 
-  // Order status breakdown count
+  // Order status breakdown count computed from all orders
   const orderStatusCounts = useMemo(() => {
-    const counts = { pending: 0, shipped: 0, delivered: 0, cancelled: 0 };
-    recentOrders.forEach((o) => {
-      const st = (o.status || "pending").toLowerCase();
+    const counts = { pending: 0, confirmed: 0, shipped: 0, delivered: 0, cancelled: 0 };
+    allOrdersList.forEach((o) => {
+      const st = (o.status || o.orderStatus || "pending").toLowerCase();
       if (st.includes("deliver")) counts.delivered++;
       else if (st.includes("ship")) counts.shipped++;
+      else if (st.includes("confirm")) counts.confirmed++;
       else if (st.includes("cancel")) counts.cancelled++;
       else counts.pending++;
     });
     return counts;
-  }, [recentOrders]);
+  }, [allOrdersList]);
 
   if (loading) {
     return (
@@ -206,7 +234,7 @@ export default function AdminDashboard() {
             </h1>
 
             <p className="text-xs sm:text-sm text-[#E8CFC5]/90 font-light leading-relaxed">
-              Real-time catalog analytics, stock level tracking, customer order bookings, and revenue breakdown for 916 Gold &amp; 925 Silver collections.
+              Live catalog analytics, stock level tracking, customer order bookings, and revenue breakdown from database.
             </p>
 
             {/* Quick Metrics Bar */}
@@ -249,9 +277,9 @@ export default function AdminDashboard() {
           icon={<IconRupee className="w-6 h-6 text-white" />}
           title="Gross Sales Revenue"
           value={`₹${totalRevenue.toLocaleString("en-IN")}`}
-          subtitle="From confirmed customer orders"
-          trend="+14.2%"
-          trendUp={true}
+          subtitle={totalOrders > 0 ? `From ${totalOrders} customer orders` : "No orders yet"}
+          trend={totalRevenue > 0 ? `₹${totalRevenue.toLocaleString("en-IN")}` : "₹0"}
+          trendUp={totalRevenue > 0}
           color="gold"
         />
 
@@ -259,9 +287,9 @@ export default function AdminDashboard() {
           icon={<IconShoppingCart className="w-6 h-6 text-white" />}
           title="Total Store Orders"
           value={totalOrders}
-          subtitle={`${recentOrders.length} recent bookings active`}
-          trend="+8.5%"
-          trendUp={true}
+          subtitle={recentOrders.length > 0 ? `${recentOrders.length} recent bookings active` : "No orders recorded"}
+          trend={totalOrders > 0 ? `${totalOrders} Total` : "0"}
+          trendUp={totalOrders > 0}
           color="maroon"
         />
 
@@ -270,8 +298,8 @@ export default function AdminDashboard() {
           title="Product Catalog"
           value={totalProducts}
           subtitle={`Across ${categorySummary.length} active categories`}
-          trend="Live"
-          trendUp={true}
+          trend={totalProducts > 0 ? `${totalStockCount} Stock` : "0"}
+          trendUp={totalProducts > 0}
           color="blue"
         />
 
@@ -279,8 +307,8 @@ export default function AdminDashboard() {
           icon={<IconAlertCircle className="w-6 h-6 text-white" />}
           title="Low Stock Alerts"
           value={lowStockProducts.length}
-          subtitle={lowStockProducts.length > 0 ? "Requires inventory refill" : "Stock health optimal"}
-          trend={lowStockProducts.length > 0 ? "Attention Needed" : "Optimal"}
+          subtitle={lowStockProducts.length > 0 ? `${lowStockProducts.length} items need refill (<5 pcs)` : "All inventory healthy"}
+          trend={lowStockProducts.length > 0 ? "Action Needed" : "Optimal"}
           trendUp={lowStockProducts.length === 0}
           color="purple"
         />
@@ -289,117 +317,8 @@ export default function AdminDashboard() {
       {/* ── 3. MAIN DASHBOARD CONTENT GRID ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         
-        {/* Left Column: Visual Sales Chart + Category Stock Radar */}
+        {/* Left Column: Category Stock Radar + Inventory Alerts */}
         <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-          
-          {/* ── Visual Revenue & Sales Trend Chart ── */}
-          <div className="bg-[#FFFDFC] border border-[#E8CFC5] rounded-3xl p-6 shadow-sm flex flex-col justify-between relative overflow-hidden">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#E8CFC5]/60">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 rounded-lg bg-[#FFF0EA] text-[#B82E44]">
-                    <IconBarChart2 className="w-4 h-4" />
-                  </span>
-                  <h3 className="font-serif text-lg text-[#7C1B2A] font-bold">
-                    Sales &amp; Revenue Overview
-                  </h3>
-                </div>
-                <p className="text-xs text-[#6F4A4A] mt-0.5">
-                  Visual sales trajectory and revenue volume analysis
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 bg-[#FFF0EA] p-1 rounded-xl border border-[#E8CFC5]">
-                {(["7d", "30d", "all"] as const).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setSelectedChartRange(range)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      selectedChartRange === range
-                        ? "bg-[#B82E44] text-white shadow-xs"
-                        : "text-[#6F4A4A] hover:text-[#35191C]"
-                    }`}
-                  >
-                    {range === "7d" ? "7 Days" : range === "30d" ? "30 Days" : "All Time"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* SVG Visual Area Chart */}
-            <div className="relative w-full h-56 pt-2">
-              <svg className="w-full h-full overflow-visible" viewBox="0 0 500 180" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#B82E44" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="#B82E44" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor="#B82E44" />
-                    <stop offset="50%" stopColor="#D4AF37" />
-                    <stop offset="100%" stopColor="#7C1B2A" />
-                  </linearGradient>
-                </defs>
-
-                {/* Horizontal Grid lines */}
-                <line x1="0" y1="30" x2="500" y2="30" stroke="#E8CFC5" strokeDasharray="4 4" strokeWidth="0.8" />
-                <line x1="0" y1="80" x2="500" y2="80" stroke="#E8CFC5" strokeDasharray="4 4" strokeWidth="0.8" />
-                <line x1="0" y1="130" x2="500" y2="130" stroke="#E8CFC5" strokeDasharray="4 4" strokeWidth="0.8" />
-
-                {/* Chart Area Fill */}
-                <path
-                  d="M 0,140 C 60,120 120,40 180,70 C 240,100 300,30 360,50 C 420,70 460,20 500,35 L 500,180 L 0,180 Z"
-                  fill="url(#chartGradient)"
-                />
-
-                {/* Chart Smooth Curve Line */}
-                <path
-                  d="M 0,140 C 60,120 120,40 180,70 C 240,100 300,30 360,50 C 420,70 460,20 500,35"
-                  fill="none"
-                  stroke="url(#lineGradient)"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                />
-
-                {/* Data Points Nodes */}
-                {[
-                  { x: 0, y: 140, val: "₹12k" },
-                  { x: 60, y: 120, val: "₹18k" },
-                  { x: 120, y: 40, val: "₹45k" },
-                  { x: 180, y: 70, val: "₹32k" },
-                  { x: 240, y: 100, val: "₹24k" },
-                  { x: 300, y: 30, val: "₹52k" },
-                  { x: 360, y: 50, val: "₹41k" },
-                  { x: 420, y: 70, val: "₹35k" },
-                  { x: 500, y: 35, val: "₹65k" },
-                ].map((pt, idx) => (
-                  <g key={idx} className="group/node cursor-pointer">
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r="4.5"
-                      fill="#FFF8F0"
-                      stroke="#7C1B2A"
-                      strokeWidth="2.5"
-                      className="transition-transform duration-300 group-hover/node:r-6"
-                    />
-                  </g>
-                ))}
-              </svg>
-
-              {/* X Axis Labels */}
-              <div className="flex justify-between items-center text-[10px] font-bold text-[#6F4A4A] mt-2 pt-2 border-t border-[#E8CFC5]/40">
-                <span>Mon</span>
-                <span>Tue</span>
-                <span>Wed</span>
-                <span>Thu</span>
-                <span>Fri</span>
-                <span>Sat</span>
-                <span>Sun</span>
-              </div>
-            </div>
-          </div>
-
           {/* ── Products by Category Breakdown ── */}
           <div className="bg-[#FFFDFC] border border-[#E8CFC5] rounded-3xl shadow-sm overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-6 border-b border-[#E8CFC5]">
@@ -480,23 +399,28 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3.5 rounded-2xl bg-[#FFF0EA] border border-[#E8CFC5] space-y-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="p-3 rounded-2xl bg-[#FFF0EA] border border-[#E8CFC5] space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#6F4A4A]">Pending</span>
                 <p className="text-xl font-bold text-[#9B1B30]">{orderStatusCounts.pending}</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">
+              <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Confirmed</span>
+                <p className="text-xl font-bold text-purple-900">{orderStatusCounts.confirmed}</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Shipped</span>
                 <p className="text-xl font-bold text-blue-900">{orderStatusCounts.shipped}</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Delivered</span>
                 <p className="text-xl font-bold text-emerald-900">{orderStatusCounts.delivered}</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 space-y-1">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 space-y-1 sm:col-span-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">Cancelled</span>
                 <p className="text-xl font-bold text-amber-900">{orderStatusCounts.cancelled}</p>
               </div>
@@ -510,41 +434,62 @@ export default function AdminDashboard() {
                 <h3 className="font-serif text-base text-[#7C1B2A] font-bold">
                   Recent Customer Orders
                 </h3>
-                <p className="text-xs text-[#6F4A4A]">Latest bookings &amp; live sales</p>
+                <p className="text-xs text-[#6F4A4A]">Live database orders &amp; recent bookings</p>
               </div>
-              <Link
-                href="/orders"
-                className="text-xs text-[#B82E44] font-bold hover:underline"
-              >
-                View All →
-              </Link>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleRefreshOrders}
+                  disabled={refreshingOrders}
+                  title="Refetch backend database orders"
+                  className="text-xs font-bold text-[#7C1B2A] bg-[#FFF0EA] hover:bg-[#FFE2D8] border border-[#E8CFC5] px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 disabled:opacity-50"
+                >
+                  <span className={refreshingOrders ? "animate-spin" : ""}>🔄</span>
+                  <span>{refreshingOrders ? "Loading..." : "Refresh"}</span>
+                </button>
+                <Link
+                  href="/orders"
+                  className="text-xs text-[#B82E44] font-bold hover:underline"
+                >
+                  View All →
+                </Link>
+              </div>
             </div>
 
             {recentOrders.length === 0 ? (
               <div className="p-8 text-center text-xs text-[#6F4A4A]">
-                No orders recorded yet. View Orders tab to add customer sales.
+                No orders recorded in database yet. Click Manage Orders to book customer sales.
               </div>
             ) : (
               <div className="divide-y divide-[#E8CFC5]/50 flex-1 overflow-auto max-h-[380px]">
                 {recentOrders.map((order) => {
                   const initial = order.customerName ? order.customerName.charAt(0).toUpperCase() : "C";
+                  const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  }) : "Recent";
 
                   return (
                     <div
-                      key={order.id}
-                      className="p-4 hover:bg-[#FFF0EA]/60 transition-colors flex items-center justify-between gap-3"
+                      key={order.id || order._id}
+                      onClick={() => setSelectedOrder(order)}
+                      className="p-4 hover:bg-[#FFF0EA]/80 cursor-pointer transition-colors flex items-center justify-between gap-3 group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Customer Avatar Circle */}
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#B82E44] to-[#7C1B2A] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#B82E44] to-[#7C1B2A] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                           {initial}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-[#35191C] truncate">
-                            {order.customerName || "Customer"}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-[#35191C] truncate">
+                              {order.customerName || "Customer"}
+                            </p>
+                            <span className="text-[10px] text-[#A77C18] font-mono">
+                              #{order.id ? order.id.slice(-5).toUpperCase() : "ORDER"}
+                            </span>
+                          </div>
                           <p className="text-[10px] text-[#6F4A4A] truncate">
-                            📞 {order.customerPhone} • {order.items?.length || 1} items
+                            📞 {order.customerPhone} • {order.items?.length || 1} item(s) • {orderDate}
                           </p>
                         </div>
                       </div>
@@ -559,12 +504,14 @@ export default function AdminDashboard() {
                               ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                               : order.status === "shipped"
                               ? "bg-blue-100 text-blue-800 border border-blue-200"
+                              : order.status === "confirmed"
+                              ? "bg-purple-100 text-purple-800 border border-purple-200"
                               : order.status === "cancelled"
                               ? "bg-red-100 text-red-800 border border-red-200"
                               : "bg-amber-100 text-amber-800 border border-amber-200"
                           }`}
                         >
-                          {order.status}
+                          {order.status || "pending"}
                         </span>
                       </div>
                     </div>
@@ -575,6 +522,87 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Order Details Modal Popup ── */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FFFDFC] border border-[#E8CFC5] rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8CFC5]">
+              <div>
+                <h3 className="font-serif text-lg text-[#9B1B30] font-bold">
+                  Order Details #{selectedOrder.id ? selectedOrder.id.slice(-6).toUpperCase() : ""}
+                </h3>
+                <span className="text-[11px] text-[#6F4A4A]">
+                  Placed on {selectedOrder.createdAt ? new Date(selectedOrder.createdAt).toLocaleString("en-IN") : "Recent"}
+                </span>
+              </div>
+              <button
+                onClick={() => setSelectedOrder(null)}
+                className="text-gray-400 hover:text-gray-700 font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Customer Info */}
+            <div className="bg-[#FFF0EA]/60 p-3.5 rounded-2xl border border-[#E8CFC5] space-y-1.5 text-xs">
+              <p><span className="font-bold text-[#35191C]">Customer Name:</span> {selectedOrder.customerName}</p>
+              <p><span className="font-bold text-[#35191C]">Contact Phone:</span> 📞 {selectedOrder.customerPhone}</p>
+              {selectedOrder.customerEmail && (
+                <p><span className="font-bold text-[#35191C]">Email:</span> {selectedOrder.customerEmail}</p>
+              )}
+              {selectedOrder.customerAddress && (
+                <p><span className="font-bold text-[#35191C]">Delivery Address:</span> 📍 {selectedOrder.customerAddress}</p>
+              )}
+              {selectedOrder.notes && (
+                <p><span className="font-bold text-[#35191C]">Notes:</span> 📝 {selectedOrder.notes}</p>
+              )}
+              <div className="pt-1 flex items-center justify-between">
+                <span className="font-bold text-[#35191C]">Fulfillment Status:</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-[#B82E44] text-white">
+                  {selectedOrder.status || "pending"}
+                </span>
+              </div>
+            </div>
+
+            {/* Items List */}
+            <div>
+              <span className="text-xs font-bold text-[#35191C] block mb-2">Order Items:</span>
+              <div className="divide-y divide-[#E8CFC5]/50 border border-[#E8CFC5] rounded-2xl overflow-hidden max-h-48 overflow-y-auto">
+                {selectedOrder.items?.map((item, idx) => (
+                  <div key={idx} className="p-3 flex items-center justify-between text-xs bg-white">
+                    <div>
+                      <p className="font-semibold text-[#35191C]">{item.productName}</p>
+                      <span className="text-[10px] text-[#6F4A4A] capitalize">
+                        {item.category || "Jewellery"} • Qty: {item.quantity}
+                      </span>
+                    </div>
+                    <span className="font-bold text-[#B82E44]">₹{(item.price * item.quantity).toLocaleString("en-IN")}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Total & Action */}
+            <div className="flex items-center justify-between pt-3 border-t border-[#E8CFC5]">
+              <div>
+                <span className="text-[11px] text-[#6F4A4A] block">Total Amount:</span>
+                <span className="font-serif text-xl font-bold text-[#9B1B30]">
+                  ₹{selectedOrder.totalAmount?.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/orders"
+                  className="px-4 py-2 bg-[#B82E44] hover:bg-[#7C1B2A] text-white font-bold text-xs rounded-xl shadow-sm transition-all"
+                >
+                  Manage in Orders →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
