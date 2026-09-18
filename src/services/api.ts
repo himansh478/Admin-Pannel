@@ -15,7 +15,7 @@ export function getBaseBackendUrl(): string {
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
     return process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "");
   }
-  return DEFAULT_RENDER_BACKEND;
+  return DEFAULT_LOCAL_BACKEND;
 }
 
 export function getBackendURL(endpoint: string, base: string = getBaseBackendUrl()): string {

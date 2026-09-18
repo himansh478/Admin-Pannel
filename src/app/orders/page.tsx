@@ -57,9 +57,82 @@ export default function OrdersPage() {
     { productName: "", category: "rings", quantity: 1, price: 0 },
   ]);
 
+  // Tracking Modal State
+  const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
+  const [trackingForm, setTrackingForm] = useState({
+    status: "quality_checked",
+    location: "Sarafa Bazar Showroom, Sehore",
+    courierPartner: "BlueDart Express Insured",
+    trackingNumber: "",
+    estimatedDelivery: "3-5 Business Days",
+    description: "",
+  });
+  const [updatingTracking, setUpdatingTracking] = useState(false);
+
   const showToast = (type: "success" | "error", text: string) => {
     setStatusMessage({ type, text });
     setTimeout(() => setStatusMessage(null), 4000);
+  };
+
+  const openTrackingModal = async (order: Order) => {
+    setTrackingOrder(order);
+    const defaultAwb = `KJ-BD-${order.id.slice(-6).toUpperCase()}`;
+    setTrackingForm({
+      status: order.status === "pending" ? "order_placed" : order.status === "confirmed" ? "quality_checked" : order.status,
+      location: "Sarafa Bazar Showroom, Sehore",
+      courierPartner: "BlueDart Express Insured",
+      trackingNumber: defaultAwb,
+      estimatedDelivery: "3-5 Business Days",
+      description: `Aapka product ${order.customerName} ji ke liye Sehore Showroom se process ho gaya hai!`,
+    });
+
+    try {
+      const res = await fetchFromAPI(`/api/tracking/${order.id}`);
+      if (res && res.success && res.tracking) {
+        const t = res.tracking;
+        setTrackingForm({
+          status: t.currentStatus || order.status,
+          location: t.currentLocation || "Sarafa Bazar Showroom, Sehore",
+          courierPartner: t.courierPartner || "BlueDart Express Insured",
+          trackingNumber: t.trackingNumber || defaultAwb,
+          estimatedDelivery: t.estimatedDelivery || "3-5 Business Days",
+          description: `Aapka product ${t.currentLocation || "hub"} par pahunch gaya hai.`,
+        });
+      }
+    } catch (e) {
+      // ignore API error
+    }
+  };
+
+  const handleSaveTrackingUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackingOrder) return;
+
+    setUpdatingTracking(true);
+    try {
+      const res = await fetchFromAPI("/api/tracking/update", {
+        method: "POST",
+        body: JSON.stringify({
+          orderId: trackingOrder.id,
+          customerName: trackingOrder.customerName,
+          customerPhone: trackingOrder.customerPhone,
+          customerEmail: trackingOrder.customerEmail,
+          ...trackingForm,
+        }),
+      });
+
+      if (res && res.success) {
+        showToast("success", "🚚 Tracking update & message sent to customer successfully!");
+        setTrackingOrder(null);
+        fetchOrders();
+      } else {
+        showToast("error", res?.error || "Failed to update tracking.");
+      }
+    } catch (err) {
+      showToast("error", "Error sending tracking update.");
+    } finally {
+      setUpdatingTracking(false);
+    }
   };
 
   const fetchOrders = async () => {
@@ -337,6 +410,13 @@ export default function OrdersPage() {
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => openTrackingModal(order)}
+                          className="px-2.5 py-1 bg-[#7C1B2A] hover:bg-[#5C131F] text-[#FFF8F0] rounded-lg text-xs font-bold transition-all shadow-xs flex items-center gap-1"
+                          title="Edit tracking status & send live message update"
+                        >
+                          <span>🚚 Update Tracking</span>
+                        </button>
+                        <button
                           onClick={() => setSelectedOrder(order)}
                           className="px-2.5 py-1 bg-[#FFF0EA] hover:bg-[#FFE2D8] text-[#7C1B2A] border border-[#E8CFC5] rounded-lg font-semibold"
                         >
@@ -414,6 +494,143 @@ export default function OrdersPage() {
                 ₹{selectedOrder.totalAmount?.toLocaleString("en-IN")}
               </span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Tracking & Message Update Modal ── */}
+      {trackingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FFFDFC] border border-[#E8CFC5] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-5 animate-scaleUp">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E8CFC5]">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🚚</span>
+                <div>
+                  <h3 className="font-serif text-lg text-[#9B1B30] font-bold">
+                    Edit Tracking &amp; Send Message
+                  </h3>
+                  <p className="text-[11px] text-[#6F4A4A]">
+                    Order #{trackingOrder.id.slice(-8)} • Customer: <strong>{trackingOrder.customerName}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTrackingOrder(null)}
+                className="text-gray-400 hover:text-gray-700 text-lg font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTrackingUpdate} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-bold text-[#35191C] mb-1">
+                  Shipment Stage / Status *
+                </label>
+                <select
+                  value={trackingForm.status}
+                  onChange={(e) => setTrackingForm({ ...trackingForm, status: e.target.value })}
+                  className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl font-bold text-[#7C1B2A] focus:outline-none"
+                >
+                  <option value="order_placed">📝 Order Placed</option>
+                  <option value="payment_verified">💳 Payment Verified</option>
+                  <option value="quality_checked">💎 Hallmark &amp; Quality Checked</option>
+                  <option value="shipped">🚚 Shipped / In Transit</option>
+                  <option value="out_for_delivery">🚴 Out for Delivery</option>
+                  <option value="delivered">📦 Delivered Successfully</option>
+                  <option value="cancelled">🚫 Cancelled</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#35191C] mb-1">Courier Partner</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. BlueDart Express"
+                    value={trackingForm.courierPartner}
+                    onChange={(e) => setTrackingForm({ ...trackingForm, courierPartner: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#35191C] mb-1">AWB Tracking Number</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. KJ-BD-982741"
+                    value={trackingForm.trackingNumber}
+                    onChange={(e) => setTrackingForm({ ...trackingForm, trackingNumber: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-[#35191C] mb-1">Current Location *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Bhopal Sorting Hub"
+                    value={trackingForm.location}
+                    onChange={(e) => setTrackingForm({ ...trackingForm, location: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-[#35191C] mb-1">Estimated Delivery</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Tomorrow by 5 PM"
+                    value={trackingForm.estimatedDelivery}
+                    onChange={(e) => setTrackingForm({ ...trackingForm, estimatedDelivery: e.target.value })}
+                    className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-[#35191C] mb-1">
+                  Message / Checkpoint Note for Customer *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="e.g. Aapka product Bhopal sorting hub par arrive ho gaya hai, kal subah dispatch kar diya jayega!"
+                  value={trackingForm.description}
+                  onChange={(e) => setTrackingForm({ ...trackingForm, description: e.target.value })}
+                  className="w-full p-3 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none text-xs text-[#35191C] resize-none"
+                />
+                <p className="text-[10px] text-[#6F4A4A] italic mt-1">
+                  💡 Yeh message customer ke live order tracking screen par automatically dikhega.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8CFC5]">
+                <button
+                  type="button"
+                  onClick={() => setTrackingOrder(null)}
+                  className="px-4 py-2 text-gray-600 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingTracking}
+                  className="px-6 py-2.5 bg-[#7C1B2A] hover:bg-[#5C131F] disabled:opacity-50 text-[#FFF8F0] font-bold uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center gap-2"
+                >
+                  {updatingTracking ? (
+                    <span>Sending Update...</span>
+                  ) : (
+                    <>
+                      <span>🚀 Send Update to Customer</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
