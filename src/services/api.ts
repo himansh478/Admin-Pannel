@@ -103,3 +103,67 @@ export async function fetchFromAPI(
     };
   }
 }
+
+/**
+ * Helper to upload image files to backend/Cloudinary using multipart/form-data
+ */
+export async function uploadFileToAPI(
+  file: File,
+  folder: string = "products"
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("folder", folder);
+
+  let token = "";
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem("keshar_admin_auth_session_v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.token) token = parsed.token;
+      }
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  const authHeaders: Record<string, string> = {};
+  if (token) {
+    authHeaders["Authorization"] = `Bearer ${token}`;
+  }
+
+  try {
+    const primaryUrl = getBackendURL("/api/upload");
+    const res = await fetch(primaryUrl, {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+      },
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data;
+    }
+  } catch (err) {
+    console.warn("Express upload failed, trying local route...", err);
+  }
+
+  // Fallback to local /api/upload route
+  try {
+    const resFallback = await fetch("/api/upload", {
+      method: "POST",
+      headers: {
+        ...authHeaders,
+      },
+      body: formData,
+    });
+    return await resFallback.json();
+  } catch (err: any) {
+    console.error("Upload fallback failed:", err);
+    return { success: false, error: err.message || "Upload failed" };
+  }
+}
+

@@ -16,9 +16,9 @@
   "type": "commonjs",
   "main": "tailwind.config.js",
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev -p 3001 --webpack",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "next start -p 3001",
     "lint": "eslint"
   },
   "dependencies": {
