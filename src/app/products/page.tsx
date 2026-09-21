@@ -109,7 +109,8 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchFromAPI("/api/products");
+      // Use fast admin-specific endpoint (indexed, lean query, cache-control)
+      const data = await fetchFromAPI("/api/products/admin");
       if (data && (data.success || Array.isArray(data.products))) {
         setProducts(data.products || []);
       } else {
