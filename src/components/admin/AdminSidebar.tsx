@@ -19,6 +19,7 @@ import {
   IconChevronRight,
   IconArrowUpRight,
   IconX,
+  IconTag,
 } from "./Icons";
 
 interface AdminSidebarProps {
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { label: "Orders",     href: "/orders",     icon: IconShoppingCart, badge: "Live" },
   { label: "Users",      href: "/users",      icon: IconUsers,     badge: "Members" },
   { label: "Analytics",  href: "/analytics",  icon: IconTrendingUp, badge: null },
+  { label: 'Offers',     href: '/offers',     icon: IconTag,       badge: 'Deals' },
 ];
 
 export default function AdminSidebar({
