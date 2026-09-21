@@ -16,10 +16,13 @@ const CLOUDINARY_API_KEY = "188117449238834";
 const CLOUDINARY_API_SECRET = "83e6_Oht4L0XWp_BEz3EuNkrEyY";
 
 export function getBaseBackendUrl(): string {
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return DEFAULT_LOCAL_BACKEND;
+  }
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
     return process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "");
   }
-  return DEFAULT_RENDER_BACKEND;
+  return DEFAULT_LOCAL_BACKEND;
 }
 
 export function getBackendURL(endpoint: string, base: string = getBaseBackendUrl()): string {
@@ -72,38 +75,47 @@ export async function fetchFromAPI(
       headers,
     });
 
-    const data = await res.json().catch(() => null);
-    if (data) {
-      return data;
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data) {
+        return data;
+      }
+      return { success: true };
+    } else {
+      console.warn(`Primary backend returned status ${res.status} for ${targetUrl}`);
     }
-    return { success: res.ok };
   } catch (err) {
     console.warn(`Primary backend request failed for ${targetUrl}:`, err);
   }
 
-  // 2. Fallback Attempt (If primary URL was localhost or timed out, try Render production URL)
+  // 2. Fallback Attempt (If primary URL was localhost, try Render; if primary was Render, try localhost)
   const fallbackUrl = getBackendURL(
     endpoint,
-    targetUrl.includes("localhost") ? DEFAULT_RENDER_BACKEND : DEFAULT_LOCAL_BACKEND
+    targetUrl.includes("localhost") || targetUrl.includes("127.0.0.1")
+      ? DEFAULT_RENDER_BACKEND
+      : DEFAULT_LOCAL_BACKEND
   );
 
   try {
-    await new Promise((r) => setTimeout(r, 1000));
     const resFallback = await fetch(fallbackUrl, {
       ...options,
       headers,
     });
 
-    const dataFallback = await resFallback.json().catch(() => null);
-    if (dataFallback) {
-      return dataFallback;
+    if (resFallback.ok) {
+      const dataFallback = await resFallback.json().catch(() => null);
+      if (dataFallback) {
+        return dataFallback;
+      }
+      return { success: true };
     }
-    return { success: resFallback.ok };
+    const errData = await resFallback.json().catch(() => null);
+    return errData || { success: false, error: `Backend returned error ${resFallback.status}` };
   } catch (fallbackErr) {
     console.error(`Fallback backend request failed for ${fallbackUrl}:`, fallbackErr);
     return {
       success: false,
-      error: "Backend connection failed. Please check your network or try again in a few seconds.",
+      error: "Backend connection failed. Please check that the backend server is running on http://localhost:5000.",
     };
   }
 }

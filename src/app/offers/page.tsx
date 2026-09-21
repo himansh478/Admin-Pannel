@@ -8,9 +8,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { uploadFileToAPI } from "@/services/api";
-
-const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL || "https://my-jewellery-backend.onrender.com";
+import { uploadFileToAPI, fetchFromAPI } from "@/services/api";
 
 const CATEGORIES = [
   "", "Ring", "Necklace", "Earring", "Bracelet", "Bangle",
@@ -79,8 +77,7 @@ export default function OffersPage() {
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${BACKEND}/api/offers/all`, { cache: "no-store" });
-      const data = await res.json();
+      const data = await fetchFromAPI("/offers/all");
       setOffers(data.data || []);
     } catch {
       setError("Failed to load offers.");
@@ -173,18 +170,18 @@ export default function OffersPage() {
         productLink: form.productLink?.trim() || "",
       };
 
-      const url = editOffer
-        ? `${BACKEND}/api/offers/${editOffer._id}`
-        : `${BACKEND}/api/offers`;
+      const endpoint = editOffer ? `/offers/${editOffer._id}` : `/offers`;
       const method = editOffer ? "PUT" : "POST";
 
-      const res = await fetch(url, {
+      const data = await fetchFromAPI(endpoint, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!data.success) { setError(data.message || "Save failed."); return; }
+
+      if (!data || !data.success) {
+        setError(data?.message || data?.error || "Save failed.");
+        return;
+      }
 
       setSuccess(editOffer ? "Offer updated!" : "Offer created!");
       setModalOpen(false);
@@ -200,14 +197,13 @@ export default function OffersPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      const res = await fetch(`${BACKEND}/api/offers/${deleteId}`, { method: "DELETE" });
-      const data = await res.json();
-      if (data.success) {
+      const data = await fetchFromAPI(`/offers/${deleteId}`, { method: "DELETE" });
+      if (data && data.success) {
         setSuccess("Offer deleted.");
         setDeleteId(null);
         fetchOffers();
       } else {
-        setError(data.message || "Delete failed.");
+        setError(data?.message || data?.error || "Delete failed.");
       }
     } catch {
       setError("Network error.");
@@ -218,9 +214,8 @@ export default function OffersPage() {
 
   async function toggleActive(offer: Offer) {
     try {
-      await fetch(`${BACKEND}/api/offers/${offer._id}`, {
+      await fetchFromAPI(`/offers/${offer._id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: !offer.isActive }),
       });
       fetchOffers();
