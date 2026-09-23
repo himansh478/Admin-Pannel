@@ -8,7 +8,7 @@
  * with seamless fallback.
  */
 
-const API_URL = "https://jewellery-gfwd.onrender.com";
+const API_URL = "https://jewellery-backend-1ycr.onrender.com";
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
 const CLOUDINARY_API_KEY = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || "";
