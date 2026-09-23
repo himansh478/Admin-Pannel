@@ -8,14 +8,13 @@
  * with seamless fallback.
  */
 
-const DEFAULT_LOCAL_BACKEND = "http://localhost:5000";
-const DEFAULT_RENDER_BACKEND = "https://my-jewellery-backend.onrender.com";
+const API_URL = "https://jewellery-gfwd.onrender.com";
 
 export function getBaseBackendUrl(): string {
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
     return process.env.NEXT_PUBLIC_BACKEND_URL.trim().replace(/\/+$/, "");
   }
-  return DEFAULT_LOCAL_BACKEND;
+  return API_URL;
 }
 
 export function getBackendURL(endpoint: string, base: string = getBaseBackendUrl()): string {
@@ -77,15 +76,10 @@ export async function fetchFromAPI(
     console.warn(`Primary backend request failed for ${targetUrl}:`, err);
   }
 
-  // 2. Fallback Attempt (If primary URL was localhost or timed out, try Render production URL)
-  const fallbackUrl = getBackendURL(
-    endpoint,
-    targetUrl.includes("localhost") ? DEFAULT_RENDER_BACKEND : DEFAULT_LOCAL_BACKEND
-  );
-
+  // 2. Fallback Attempt (If primary request failed or timed out, retry)
   try {
     await new Promise((r) => setTimeout(r, 1000));
-    const resFallback = await fetch(fallbackUrl, {
+    const resFallback = await fetch(targetUrl, {
       ...options,
       headers,
     });
@@ -96,7 +90,7 @@ export async function fetchFromAPI(
     }
     return { success: resFallback.ok };
   } catch (fallbackErr) {
-    console.error(`Fallback backend request failed for ${fallbackUrl}:`, fallbackErr);
+    console.error(`Fallback backend request failed for ${targetUrl}:`, fallbackErr);
     return {
       success: false,
       error: "Backend connection failed. Please check your network or try again in a few seconds.",
