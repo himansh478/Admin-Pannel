@@ -10,9 +10,9 @@
 
 const API_URL = "https://jewellery-gfwd.onrender.com";
 
-const CLOUDINARY_CLOUD_NAME = "dxq570mvr";
-const CLOUDINARY_API_KEY = "188117449238834";
-const CLOUDINARY_API_SECRET = "83e6_Oht4L0XWp_BEz3EuNkrEyY";
+const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_API_KEY = process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || "";
+const CLOUDINARY_API_SECRET = process.env.NEXT_PUBLIC_CLOUDINARY_API_SECRET || "";
 
 export function getBaseBackendUrl(): string {
   if (process.env.NEXT_PUBLIC_BACKEND_URL) {
