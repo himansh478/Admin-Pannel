@@ -491,22 +491,10 @@ export function IconFilter({ className = "w-5 h-5", size, ...props }: IconProps)
   );
 }
 
-export function IconTag({ className = "w-5 h-5", size, ...props }: IconProps) {
+export function IconTag({ className = '' }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M12 2H2v10l11.29 11.29a1 1 0 0 0 1.41 0l7.59-7.59a1 1 0 0 0 0-1.41L12 2z" />
-      <circle cx="7" cy="7" r="1.5" />
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A2 2 0 013 10V5a2 2 0 012-2z" />
     </svg>
   );
 }

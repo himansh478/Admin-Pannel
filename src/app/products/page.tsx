@@ -10,7 +10,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { STORE_CATEGORIES, Product } from "@/types/product";
-import { fetchFromAPI } from "@/services/api";
+import { fetchFromAPI, uploadFileToAPI } from "@/services/api";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -18,10 +18,12 @@ export default function ProductsPage() {
   const [filterCategory, setFilterCategory] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [parsedCsvProducts, setParsedCsvProducts] = useState<Product[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -45,6 +47,28 @@ export default function ProductsPage() {
     modelImage: "",
   });
 
+  const handleEditClick = (product: Product) => {
+    setEditingProductId(product.id);
+    setFormData({
+      category: product.category || "nose-pins",
+      productType: product.productType || "",
+      description: product.description || "",
+      material: product.material || "92.50 % silver",
+      dimensionL: product.dimensionL || "",
+      dimensionW: product.dimensionW || "",
+      dimensionH: product.dimensionH || "",
+      weight: product.weight || "",
+      sellingPrice: String(product.sellingPrice || ""),
+      mrp: String(product.mrp || ""),
+      stock: String(product.stock ?? 10),
+      frontImage: product.frontImage || "",
+      backImage: product.backImage || "",
+      modelImage: product.modelImage || "",
+    });
+    setShowAddModal(true);
+  };
+
+
   const showToast = (type: "success" | "error", text: string) => {
     setStatusMessage({ type, text });
     setTimeout(() => setStatusMessage(null), 5000);
@@ -63,41 +87,30 @@ export default function ProductsPage() {
     }
 
     try {
-      showToast("success", "Uploading image to Cloudinary... ☁️");
-      const uploadFormData = new FormData();
-      uploadFormData.append("file", file);
-      uploadFormData.append("folder", "products");
+      setUploadingField(field);
+      showToast("success", `Uploading ${field === "frontImage" ? "Front Photo" : field === "backImage" ? "Back Photo" : "Model Photo"} to Cloudinary... ⏳`);
 
-      const res = await fetchFromAPI("/api/upload", {
-        method: "POST",
-        body: uploadFormData,
-      });
+      const result = await uploadFileToAPI(file, "products");
 
-      if (res && res.success && res.url) {
-        setFormData((prev) => ({ ...prev, [field]: res.url }));
-        showToast("success", "Image successfully saved to Cloudinary! ☁️✨");
-        return;
+      if (result && result.success && result.url) {
+        setFormData((prev) => ({ ...prev, [field]: result.url }));
+        showToast("success", "Photo uploaded directly to Cloudinary! 💎");
+      } else {
+        showToast("error", result?.error || "Upload failed. Please check network/backend.");
       }
-    } catch (err) {
-      console.warn("Direct upload error, converting to data url fallback:", err);
+    } catch (error: any) {
+      console.error("Upload failed", error);
+      showToast("error", error?.message || "Failed to upload image.");
+    } finally {
+      setUploadingField(null);
     }
-
-    // Fallback if upload endpoint fails
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setFormData((prev) => ({ ...prev, [field]: result }));
-        showToast("success", "Image loaded (will auto-upload on save) ☁️");
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchFromAPI("/api/products");
+      // Use fast admin-specific endpoint (indexed, lean query, cache-control)
+      const data = await fetchFromAPI("/api/products/admin");
       if (data && (data.success || Array.isArray(data.products))) {
         setProducts(data.products || []);
       } else {
@@ -115,7 +128,7 @@ export default function ProductsPage() {
     fetchProducts();
   }, []);
 
-  // 1. Single Product Submission
+  // 1. Single Product Submission (Create or Update)
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.productType || !formData.sellingPrice) {
@@ -125,20 +138,25 @@ export default function ProductsPage() {
 
     try {
       setIsLoading(true);
+      const isEditing = Boolean(editingProductId);
+      const payload = {
+        ...(isEditing ? { id: editingProductId } : {}),
+        ...formData,
+        sellingPrice: Number(formData.sellingPrice),
+        mrp: Number(formData.mrp) || Number(formData.sellingPrice),
+        stock: Number(formData.stock) || 0,
+      };
+
       const data = await fetchFromAPI("/api/products", {
-        method: "POST",
+        method: isEditing ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          sellingPrice: Number(formData.sellingPrice),
-          mrp: Number(formData.mrp) || Number(formData.sellingPrice),
-          stock: Number(formData.stock) || 0,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (data && data.success) {
-        showToast("success", "Product published to store successfully!");
+        showToast("success", isEditing ? "Product updated successfully!" : "Product published to store successfully!");
         setShowAddModal(false);
+        setEditingProductId(null);
         setFormData({
           category: "nose-pins",
           productType: "",
@@ -160,12 +178,13 @@ export default function ProductsPage() {
         showToast("error", data?.error || "Failed to save product.");
       }
     } catch (error) {
-      console.error("Failed to add product", error);
+      console.error("Failed to save product", error);
       showToast("error", "API connection error.");
     } finally {
       setIsLoading(false);
     }
   };
+
 
   // 2. Delete Product
   const handleDelete = async (id: string) => {
@@ -397,12 +416,32 @@ export default function ProductsPage() {
             <span>{showBulkUpload ? "Close Bulk Tool" : "Bulk Excel/CSV"}</span>
           </button>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setEditingProductId(null);
+              setFormData({
+                category: "nose-pins",
+                productType: "",
+                description: "",
+                material: "92.50 % silver",
+                dimensionL: "8mm",
+                dimensionW: "8mm",
+                dimensionH: "7mm",
+                weight: "",
+                sellingPrice: "",
+                mrp: "",
+                stock: "10",
+                frontImage: "",
+                backImage: "",
+                modelImage: "",
+              });
+              setShowAddModal(true);
+            }}
             className="px-4 py-2 bg-[#B82E44] hover:bg-[#7C1B2A] text-[#FFF8F0] text-xs font-bold uppercase tracking-wider rounded-xl shadow-sm transition-all flex items-center gap-1.5"
           >
             <span>+</span>
             <span>Add Single Product</span>
           </button>
+
         </div>
       </div>
 
@@ -609,13 +648,22 @@ export default function ProductsPage() {
                       </span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-lg font-semibold transition-all"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => handleEditClick(p)}
+                          className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-lg font-semibold transition-all text-xs"
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p.id)}
+                          className="px-2.5 py-1 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-lg font-semibold transition-all text-xs"
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -628,12 +676,12 @@ export default function ProductsPage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-[#FFFDFC] border border-[#E8CFC5] rounded-2xl p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-4 border-b border-[#E8CFC5]">
-              <h3 className="font-serif text-xl text-[#9B1B30] font-bold">
-                Add Single Product
+            <div className="flex items-center justify-between p-5 border-b border-[#E8CFC5]">
+              <h3 className="font-serif text-lg font-bold text-[#7C1B2A]">
+                {editingProductId ? "✏️ Edit Product Details" : "Add Single Product"}
               </h3>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => { setShowAddModal(false); setEditingProductId(null); }}
                 className="text-gray-400 hover:text-gray-700 text-lg font-bold"
               >
                 ✕
@@ -828,9 +876,13 @@ export default function ProductsPage() {
                     {/* Front Image */}
                     <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
                       <span className="font-semibold text-[#7C1B2A] text-[11px]">Front Photo (Main)</span>
-                      {formData.frontImage ? (
+                      {uploadingField === "frontImage" ? (
+                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
+                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
+                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
+                        </div>
+                      ) : formData.frontImage ? (
                         <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
-                          {/* eslint-disable-next-html-element-suppression */}
                           <img src={formData.frontImage} alt="Front preview" className="w-full h-full object-cover" />
                           <button
                             type="button"
@@ -844,7 +896,7 @@ export default function ProductsPage() {
                         <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
                           <span className="text-xl">📸</span>
                           <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Front Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -858,7 +910,12 @@ export default function ProductsPage() {
                     {/* Back Image */}
                     <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
                       <span className="font-semibold text-[#7C1B2A] text-[11px]">Back Photo (Optional)</span>
-                      {formData.backImage ? (
+                      {uploadingField === "backImage" ? (
+                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
+                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
+                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
+                        </div>
+                      ) : formData.backImage ? (
                         <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
                           <img src={formData.backImage} alt="Back preview" className="w-full h-full object-cover" />
                           <button
@@ -873,7 +930,7 @@ export default function ProductsPage() {
                         <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
                           <span className="text-xl">📷</span>
                           <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Back Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -887,7 +944,12 @@ export default function ProductsPage() {
                     {/* Model Wearing Image */}
                     <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
                       <span className="font-semibold text-[#7C1B2A] text-[11px]">Model Photo (Optional)</span>
-                      {formData.modelImage ? (
+                      {uploadingField === "modelImage" ? (
+                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
+                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
+                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
+                        </div>
+                      ) : formData.modelImage ? (
                         <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
                           <img src={formData.modelImage} alt="Model preview" className="w-full h-full object-cover" />
                           <button
@@ -902,7 +964,7 @@ export default function ProductsPage() {
                         <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
                           <span className="text-xl">💃</span>
                           <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Model Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">PNG, JPG, WEBP</span>
+                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -944,19 +1006,20 @@ export default function ProductsPage() {
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8CFC5]">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  onClick={() => { setShowAddModal(false); setEditingProductId(null); }}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-6 py-2.5 bg-[#B82E44] hover:bg-[#7C1B2A] text-[#FFF8F0] font-bold uppercase tracking-wider rounded-xl shadow-md transition-all"
+                  className="px-6 py-2.5 bg-[#B82E44] hover:bg-[#7C1B2A] text-[#FFF8F0] font-bold uppercase tracking-wider rounded-xl shadow-md transition-all text-xs"
                 >
-                  {isLoading ? "Saving..." : "Save Product"}
+                  {isLoading ? "Saving..." : (editingProductId ? "💾 Update Product" : "Save Product")}
                 </button>
               </div>
+
             </form>
           </div>
         </div>
