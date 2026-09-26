@@ -20,6 +20,7 @@ import {
   IconArrowUpRight,
   IconX,
   IconTag,
+  IconGift,
 } from "./Icons";
 
 interface AdminSidebarProps {
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
   { label: "Users",      href: "/users",      icon: IconUsers,     badge: "Members" },
   { label: "Analytics",  href: "/analytics",  icon: IconTrendingUp, badge: null },
   { label: 'Offers',     href: '/offers',     icon: IconTag,       badge: 'Deals' },
+  { label: 'Gifts',      href: '/gifts',      icon: IconGift,      badge: null },
 ];
 
 export default function AdminSidebar({
