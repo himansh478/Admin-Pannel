@@ -31,6 +31,7 @@ interface Order {
   totalAmount: number;
   status: OrderStatus;
   notes?: string;
+  gift?: { _id: string; name: string; image: string };
   createdAt?: string;
 }
 
@@ -380,6 +381,11 @@ export default function OrdersPage() {
                       <span className="font-semibold text-[#B82E44]">
                         {order.items?.length || 0} product(s)
                       </span>
+                      {order.gift && (
+                        <span className="block text-[10px] text-[#9B1B30] font-bold mt-0.5">
+                          🎁 Gift Packed
+                        </span>
+                      )}
                     </td>
                     <td className="p-3 font-bold text-[#B82E44]">
                       ₹{order.totalAmount?.toLocaleString("en-IN")}
@@ -468,6 +474,13 @@ export default function OrdersPage() {
               )}
               {selectedOrder.notes && (
                 <p><span className="font-bold text-[#35191C]">Notes:</span> {selectedOrder.notes}</p>
+              )}
+              {selectedOrder.gift && (
+                <p className="flex items-center gap-1.5 mt-2 bg-[#FFF8F0] p-1.5 rounded-lg border border-[#E8CFC5]">
+                  <span className="text-sm">🎁</span>
+                  <span className="font-bold text-[#9B1B30]">Gift Packing:</span> 
+                  <span className="text-[#35191C] font-semibold">{selectedOrder.gift.name}</span>
+                </p>
               )}
             </div>
 
