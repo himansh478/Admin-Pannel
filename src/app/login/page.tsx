@@ -63,8 +63,9 @@ export default function AdminLoginPage() {
       return;
     }
 
-    if (regPassword.length < 6) {
-      setErrorMessage("Password must be at least 6 characters long.");
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+    if (!passwordRegex.test(regPassword)) {
+      setErrorMessage("Password must be at least 8 characters long, include an uppercase letter, a lowercase letter, a number, and a special character.");
       return;
     }
 
@@ -273,7 +274,7 @@ export default function AdminLoginPage() {
 
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-[#6F4A4A] mb-1">
-                  Password (min 6 chars) *
+                  Password *
                 </label>
                 <input
                   type="password"
