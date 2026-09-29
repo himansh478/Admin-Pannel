@@ -49,6 +49,7 @@ export default function ProductsPage() {
   const [csvFileName, setCsvFileName] = useState("");
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [imageUploadMode, setImageUploadMode] = useState<"file" | "url">("file");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,7 +66,7 @@ export default function ProductsPage() {
     weight: "",
     sellingPrice: "",
     mrp: "",
-    stock: "10",
+    stock: "",
     frontImage: "",
     backImage: "",
     modelImage: "",
@@ -119,7 +120,7 @@ export default function ProductsPage() {
     setShowAddModal(true);
   };
 
-  // Image Upload handler
+  // Image Upload handler — with auto-compression + real progress %
   const handleImageFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
     field: "frontImage" | "backImage" | "modelImage"
@@ -127,20 +128,22 @@ export default function ProductsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      showToast("error", "Image file size should be less than 10MB");
+    if (file.size > 50 * 1024 * 1024) {
+      showToast("error", "Image file too large (max 50MB).");
       return;
     }
 
     try {
       setUploadingField(field);
-      showToast("success", `Uploading ${field === "frontImage" ? "Front Photo" : field === "backImage" ? "Back Photo" : "Model Photo"} to Cloudinary... ⏳`);
+      setUploadProgress((prev) => ({ ...prev, [field]: 0 }));
 
-      const result = await uploadFileToAPI(file, "products");
+      const result = await uploadFileToAPI(file, "products", (pct) => {
+        setUploadProgress((prev) => ({ ...prev, [field]: pct }));
+      });
 
       if (result && result.success && result.url) {
-        setFormData((prev) => ({ ...prev, [field]: result.url }));
-        showToast("success", "Photo uploaded directly to Cloudinary! 💎");
+        setFormData((prev) => ({ ...prev, [field]: result.url! }));
+        showToast("success", "Photo uploaded to Cloudinary! 💎");
       } else {
         showToast("error", result?.error || "Upload failed. Please check network/backend.");
       }
@@ -149,6 +152,7 @@ export default function ProductsPage() {
       showToast("error", error?.message || "Failed to upload image.");
     } finally {
       setUploadingField(null);
+      setUploadProgress((prev) => ({ ...prev, [field]: 0 }));
     }
   };
 
@@ -168,8 +172,13 @@ export default function ProductsPage() {
       showToast("error", "MRP cannot be less than Selling Price.");
       return;
     }
-    if (Number(formData.stock) < 0) {
-      showToast("error", "Stock cannot be negative.");
+    if (formData.stock === "" || formData.stock === undefined) {
+      showToast("error", "Stock quantity is required. Enter 0 if out of stock.");
+      return;
+    }
+    const stockNum = Number(formData.stock);
+    if (isNaN(stockNum) || stockNum < 0 || stockNum > 999) {
+      showToast("error", "Stock must be between 0 and 999.");
       return;
     }
     if (!formData.frontImage) {
@@ -209,7 +218,7 @@ export default function ProductsPage() {
           weight: "",
           sellingPrice: "",
           mrp: "",
-          stock: "10",
+          stock: "",
           frontImage: "",
           backImage: "",
           modelImage: "",
@@ -808,7 +817,7 @@ export default function ProductsPage() {
                 weight: "",
                 sellingPrice: "",
                 mrp: "",
-                stock: "10",
+                stock: "",
                 frontImage: "",
                 backImage: "",
                 modelImage: "",
@@ -1612,15 +1621,21 @@ export default function ProductsPage() {
                 </div>
                 <div>
                   <label className="block font-bold text-[#35191C] mb-1">
-                    9. Inventory Stock (pcs)
+                    9. Inventory Stock (pcs) <span className="text-[#B82E44]">*</span>
                   </label>
                   <input
                     type="number"
-                    placeholder="10"
+                    placeholder="e.g. 5  (enter 0 if out of stock)"
+                    min={0}
+                    max={999}
+                    required
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                     className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl font-bold text-green-700 focus:outline-none focus:border-[#B82E44]"
                   />
+                  <p className="text-[10px] text-[#9B7B6A] mt-1">
+                    ⚠️ Stock sirf tab ghata hai jab customer payment kare. Add to Cart se stock nahi ghata.
+                  </p>
                 </div>
               </div>
 
@@ -1657,108 +1672,97 @@ export default function ProductsPage() {
                 </div>
 
                 {imageUploadMode === "file" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Front Image */}
-                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
-                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Front Photo (Main)</span>
-                      {uploadingField === "frontImage" ? (
-                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
-                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
-                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
-                        </div>
-                      ) : formData.frontImage ? (
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
-                          <img src={formData.frontImage} alt="Front preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, frontImage: "" })}
-                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
-                          >
-                            Remove ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
-                          <span className="text-xl">📸</span>
-                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Front Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageFileChange(e, "frontImage")}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {(
+                      [
+                        { field: "frontImage" as const, label: "Front Photo", emoji: "📸", required: true },
+                        { field: "backImage" as const, label: "Back Photo", emoji: "📷", required: false },
+                        { field: "modelImage" as const, label: "Model Photo", emoji: "💃", required: false },
+                      ] as const
+                    ).map(({ field, label, emoji, required }) => {
+                      const isUploading = uploadingField === field;
+                      const pct = uploadProgress[field] ?? 0;
+                      const imageUrl = formData[field];
 
-                    {/* Back Image */}
-                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
-                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Back Photo (Optional)</span>
-                      {uploadingField === "backImage" ? (
-                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
-                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
-                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
-                        </div>
-                      ) : formData.backImage ? (
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
-                          <img src={formData.backImage} alt="Back preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, backImage: "" })}
-                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
-                          >
-                            Remove ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
-                          <span className="text-xl">📷</span>
-                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Back Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageFileChange(e, "backImage")}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
+                      return (
+                        <div key={field} className="flex flex-col gap-2">
+                          {/* Label */}
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-[#7C1B2A] text-xs">{label}</span>
+                            {required && <span className="text-[#B82E44] text-xs">*</span>}
+                            {!required && <span className="text-[10px] text-[#9B7B6A]">(optional)</span>}
+                          </div>
 
-                    {/* Model Wearing Image */}
-                    <div className="p-3 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
-                      <span className="font-semibold text-[#7C1B2A] text-[11px]">Model Photo (Optional)</span>
-                      {uploadingField === "modelImage" ? (
-                        <div className="w-full h-24 border-2 border-dashed border-[#B82E44] bg-[#FFF0EA] rounded-lg flex flex-col items-center justify-center p-2">
-                          <div className="w-6 h-6 border-2 border-[#B82E44] border-t-transparent rounded-full animate-spin mb-1" />
-                          <span className="text-[10px] font-bold text-[#B82E44]">Uploading... ☁️</span>
+                          {/* Upload Area */}
+                          {isUploading ? (
+                            /* Progress State */
+                            <div className="w-full h-36 border-2 border-[#B82E44] bg-[#FFF0EA] rounded-2xl flex flex-col items-center justify-center gap-2 p-4">
+                              <div className="w-8 h-8 border-3 border-[#B82E44] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
+                              <div className="w-full bg-[#E8CFC5] rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-full bg-[#B82E44] rounded-full transition-all duration-200"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-bold text-[#B82E44]">
+                                {pct < 10 ? "Compressing... 🗜️" : `Uploading ${pct}% ☁️`}
+                              </span>
+                            </div>
+                          ) : imageUrl ? (
+                            /* Preview State */
+                            <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-[#B82E44] group">
+                              <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
+                              {/* Remove Button — always visible on touch, hover on desktop */}
+                              <button
+                                type="button"
+                                onClick={() => setFormData((prev) => ({ ...prev, [field]: "" }))}
+                                className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                              >
+                                ✕ Remove
+                              </button>
+                              {/* Change Photo overlay */}
+                              <label className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] font-bold text-center py-1.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-all">
+                                📷 Change Photo
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handleImageFileChange(e, field)}
+                                  className="hidden"
+                                />
+                              </label>
+                            </div>
+                          ) : (
+                            /* Empty — Tap to Upload */
+                            <label className="w-full h-36 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] active:border-[#B82E44] bg-white hover:bg-[#FFF8F5] rounded-2xl flex flex-col items-center justify-center cursor-pointer gap-1.5 transition-all touch-manipulation">
+                              <span className="text-3xl">{emoji}</span>
+                              <span className="text-xs font-bold text-[#B82E44]">Tap to upload {label}</span>
+                              <span className="text-[10px] text-[#9B7B6A]">Auto-compresses big photos ✨</span>
+                              {/* Gallery input */}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageFileChange(e, field)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+
+                          {/* Camera Button — only when no image and not uploading */}
+                          {!imageUrl && !isUploading && (
+                            <label className="w-full py-2 border border-[#E8CFC5] bg-[#FFF0EA]/60 hover:bg-[#FFF0EA] rounded-xl text-[11px] font-semibold text-[#7C1B2A] text-center cursor-pointer flex items-center justify-center gap-1 transition-all touch-manipulation">
+                              📷 Open Camera
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) => handleImageFileChange(e, field)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
                         </div>
-                      ) : formData.modelImage ? (
-                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border border-[#B82E44] group">
-                          <img src={formData.modelImage} alt="Model preview" className="w-full h-full object-cover" />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, modelImage: "" })}
-                            className="absolute inset-0 bg-black/60 text-white font-bold text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all"
-                          >
-                            Remove ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="w-full h-24 border-2 border-dashed border-[#B82E44]/30 hover:border-[#B82E44] bg-white rounded-lg flex flex-col items-center justify-center cursor-pointer p-2 transition-all">
-                          <span className="text-xl">💃</span>
-                          <span className="text-[10px] font-bold text-[#B82E44] mt-1">Upload Model Pic</span>
-                          <span className="text-[9px] text-[#6F4A4A]">Cloudinary Auto-Optimize</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageFileChange(e, "modelImage")}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="space-y-2">
