@@ -19,6 +19,10 @@ interface OrderItem {
   category: string;
   quantity: number;
   price: number;
+  isExchangeRequested?: boolean;
+  exchangeReason?: string;
+  exchangePhoto?: string;
+  exchangeStatus?: string;
 }
 
 interface Order {
@@ -493,8 +497,19 @@ export default function OrdersPage() {
                     <div>
                       <p className="font-semibold text-[#35191C]">{item.productName}</p>
                       <span className="text-[10px] text-[#6F4A4A] capitalize">{item.category} • Qty: {item.quantity}</span>
+                      {item.isExchangeRequested && (
+                        <div className="mt-1 bg-red-50 p-2 rounded border border-red-200">
+                          <p className="text-[10px] font-bold text-red-800 uppercase">Exchange Requested</p>
+                          <p className="text-[10px] text-red-700 font-medium whitespace-pre-wrap mt-0.5">Reason: {item.exchangeReason}</p>
+                          {item.exchangePhoto && (
+                            <a href={item.exchangePhoto} target="_blank" className="text-[10px] text-blue-600 underline block mt-0.5" rel="noreferrer">
+                              View Attached Photo
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <span className="font-bold text-[#B82E44]">₹{item.price * item.quantity}</span>
+                    <span className="font-bold text-[#B82E44] flex-shrink-0">₹{item.price * item.quantity}</span>
                   </div>
                 ))}
               </div>

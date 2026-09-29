@@ -33,6 +33,7 @@ const NAV_ITEMS = [
   { label: "Products",   href: "/products",   icon: IconPackage,  badge: "Catalog" },
   { label: "Inventory",  href: "/inventory",  icon: IconLayers,   badge: null },
   { label: "Orders",     href: "/orders",     icon: IconShoppingCart, badge: "Live" },
+  { label: "Exchanges",  href: "/exchanges",  icon: IconTag,       badge: "Issues" },
   { label: "Users",      href: "/users",      icon: IconUsers,     badge: "Members" },
   { label: "Analytics",  href: "/analytics",  icon: IconTrendingUp, badge: null },
   { label: 'Offers',     href: '/offers',     icon: IconTag,       badge: 'Deals' },
