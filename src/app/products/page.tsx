@@ -112,7 +112,7 @@ export default function ProductsPage() {
       weight: product.weight || "",
       sellingPrice: String(product.sellingPrice || ""),
       mrp: String(product.mrp || ""),
-      stock: String(product.stock ?? 10),
+      stock: String(product.stock ?? 0),
       frontImage: product.frontImage || "",
       backImage: product.backImage || "",
       modelImage: product.modelImage || "",
@@ -326,7 +326,7 @@ export default function ProductsPage() {
             const updatedCategory = bulkCategory ? bulkCategory : prod.category;
             const updatedMaterial = bulkMaterial ? bulkMaterial : prod.material;
 
-            let updatedStock = prod.stock ?? 10;
+            let updatedStock = prod.stock ?? 0;
             if (bulkStockMode === "set" && bulkStockValue !== "") {
               updatedStock = Math.max(0, parseInt(bulkStockValue, 10) || 0);
             } else if (bulkStockMode === "add" && bulkStockValue !== "") {
@@ -649,7 +649,7 @@ export default function ProductsPage() {
               weight: cols[7] || "N/A",
               sellingPrice: parseFloat(cols[8]) || 0,
               mrp: parseFloat(cols[9]) || 0,
-              stock: parseInt(cols[10], 10) || 10,
+              stock: !isNaN(parseInt(cols[10], 10)) ? parseInt(cols[10], 10) : 0,
               frontImage: cols[11] || "",
               backImage: cols[12] || "",
               modelImage: cols[13] || "",
