@@ -206,17 +206,17 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-7 pb-10">
+    <div className="space-y-4 sm:space-y-7 pb-10">
       {/* ── 1. LUXURY HERO WELCOME BANNER ── */}
       <div
-        className="relative overflow-hidden rounded-xl text-[#FFF8F0] p-6 sm:p-8 shadow-2xl border border-[#D4AF37]/35"
+        className="relative overflow-hidden rounded-xl text-[#FFF8F0] p-4 sm:p-6 lg:p-8 shadow-2xl border border-[#D4AF37]/35"
         style={{
           background: "linear-gradient(135deg, #35070D 0%, #480C14 45%, #7A1021 100%)",
         }}
       >
         {/* Background Decorative Gold Accents */}
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-[#B82E44]/20 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 sm:w-64 h-48 sm:h-64 bg-[#D4AF37]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-36 sm:w-48 h-36 sm:h-48 bg-[#B82E44]/20 rounded-full blur-2xl pointer-events-none" />
         {/* Filigree diagonal pattern */}
         <div
           className="absolute inset-0 pointer-events-none"
@@ -225,111 +225,111 @@ export default function AdminDashboard() {
               "repeating-linear-gradient(45deg, rgba(212,175,55,0.015) 0, rgba(212,175,55,0.015) 1px, transparent 0, transparent 24px)",
           }}
         />
-        <div className="absolute top-4 right-8 opacity-[0.07] text-[#D4AF37]">
-          <IconCrown className="w-48 h-48" />
+        <div className="absolute top-4 right-8 opacity-[0.05] sm:opacity-[0.07] text-[#D4AF37]">
+          <IconCrown className="w-32 sm:w-48 h-32 sm:h-48" />
         </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="px-3 py-1 rounded bg-[#2C1417]/80 border border-[#D4AF37]/35 text-[#E6C766] text-xs font-bold uppercase tracking-widest flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#E6C766] animate-pulse" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-6">
+          <div className="space-y-2 sm:space-y-3 max-w-2xl">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <span className="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded bg-[#2C1417]/80 border border-[#D4AF37]/35 text-[#E6C766] text-[10px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest flex items-center gap-1.5">
+                <span className="w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-[#E6C766] animate-pulse" />
                 {greeting}, Admin ✦
               </span>
-              <span className="text-xs text-[#E8CFC5]/70 flex items-center gap-1">
-                <IconClock className="w-3.5 h-3.5 text-[#E6C766]" />
+              <span className="text-[10px] sm:text-xs text-[#E8CFC5]/70 flex items-center gap-1">
+                <IconClock className="w-3 sm:w-3.5 h-3 sm:h-3.5 text-[#E6C766]" />
                 {currentDate}
               </span>
             </div>
 
-            <h1 className="font-serif text-2xl sm:text-3xl text-white font-bold tracking-tight leading-tight">
+            <h1 className="font-serif text-xl sm:text-3xl text-white font-bold tracking-tight leading-tight">
               Keshar Jewellers <span className="text-[#E6C766]">Control Center</span>
             </h1>
 
-            <p className="text-xs sm:text-sm text-[#FFE2D8]/80 font-light leading-relaxed">
-              Live catalog analytics, stock level tracking, customer order bookings, and revenue breakdown from database.
+            <p className="text-[11px] sm:text-sm text-[#FFE2D8]/80 font-light leading-relaxed">
+              Live catalog analytics, stock level tracking, customer order bookings, and revenue breakdown.
             </p>
 
             {/* Quick Metrics Bar */}
-            <div className="pt-1 flex items-center gap-3 text-xs flex-wrap">
-              <span className="flex items-center gap-1.5 bg-[#2C1417]/80 border border-[#D4AF37]/35 px-3 py-1.5 rounded text-[#E6C766] font-semibold shadow-sm">
+            <div className="pt-0.5 sm:pt-1 flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs flex-wrap">
+              <span className="flex items-center gap-1 sm:gap-1.5 bg-[#2C1417]/80 border border-[#D4AF37]/35 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded text-[#E6C766] font-semibold shadow-2xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-ping" />
-                <IconRupee className="w-3.5 h-3.5" />
+                <IconRupee className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                 Revenue: ₹{totalRevenue.toLocaleString("en-IN")}
               </span>
-              <span className="flex items-center gap-1.5 bg-[#2C1417]/80 border border-[#D4AF37]/35 px-3 py-1.5 rounded text-[#E6C766] font-semibold shadow-sm">
-                <IconPackage className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-1 sm:gap-1.5 bg-[#2C1417]/80 border border-[#D4AF37]/35 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded text-[#E6C766] font-semibold shadow-2xs">
+                <IconPackage className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                 {totalStockCount} Items in Stock
               </span>
             </div>
           </div>
 
           {/* Header Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
             <Link
               href="/products"
-              className="px-5 py-2.5 bg-[#D4AF37] hover:bg-[#E6C766] text-[#35070D] text-xs font-extrabold uppercase tracking-wider rounded shadow-lg shadow-[#D4AF37]/25 transition-all duration-200 flex items-center gap-2 active:scale-95"
+              className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 bg-[#D4AF37] hover:bg-[#E6C766] text-[#35070D] text-[11px] sm:text-xs font-extrabold uppercase tracking-wider rounded shadow-md shadow-[#D4AF37]/25 transition-all duration-200 flex items-center justify-center gap-1.5 active:scale-95 text-center"
             >
-              <IconPlus className="w-4 h-4" />
-              <span>Add New Product</span>
+              <IconPlus className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+              <span>Add Product</span>
             </Link>
 
             <Link
               href="/orders"
-              className="px-5 py-2.5 bg-[#4A2528]/80 hover:bg-[#5A3538] border border-[#E8CFC5]/25 hover:border-[#D4AF37]/30 text-[#FFF8F0] text-xs font-bold uppercase tracking-wider rounded transition-all flex items-center gap-2"
+              className="flex-1 sm:flex-none px-4 sm:px-5 py-2 sm:py-2.5 bg-[#4A2528]/80 hover:bg-[#5A3538] border border-[#E8CFC5]/25 hover:border-[#D4AF37]/30 text-[#FFF8F0] text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded transition-all flex items-center justify-center gap-1.5 text-center"
             >
-              <IconShoppingCart className="w-4 h-4 text-[#E6C766]" />
-              <span>Manage Orders</span>
+              <IconShoppingCart className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[#E6C766]" />
+              <span>Orders</span>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* ── 2. SUMMARY KPI STAT CARDS ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* ── 2. SUMMARY KPI STAT CARDS (2 cols on mobile, 4 on desktop) ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5">
         <StatCard
-          icon={<IconRupee className="w-5 h-5 text-white" />}
-          title="Gross Sales Revenue"
+          icon={<IconRupee className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+          title="Sales Revenue"
           value={`₹${totalRevenue.toLocaleString("en-IN")}`}
-          subtitle={totalOrders > 0 ? `From ${totalOrders} customer orders` : "No orders yet"}
+          subtitle={totalOrders > 0 ? `${totalOrders} orders` : "No orders"}
           trend={totalRevenue > 0 ? `₹${totalRevenue.toLocaleString("en-IN")}` : "₹0"}
           trendUp={totalRevenue > 0}
           color="gold"
         />
 
         <StatCard
-          icon={<IconShoppingCart className="w-5 h-5 text-white" />}
-          title="Total Store Orders"
+          icon={<IconShoppingCart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+          title="Total Orders"
           value={totalOrders}
-          subtitle={recentOrders.length > 0 ? `${recentOrders.length} recent bookings active` : "No orders recorded"}
+          subtitle={recentOrders.length > 0 ? `${recentOrders.length} active` : "0 orders"}
           trend={totalOrders > 0 ? `${totalOrders} Total` : "0"}
           trendUp={totalOrders > 0}
           color="maroon"
         />
 
         <StatCard
-          icon={<IconPackage className="w-5 h-5 text-white" />}
-          title="Product Catalog"
+          icon={<IconPackage className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+          title="Live Catalog"
           value={totalProducts}
-          subtitle={`Across ${categorySummary.length} active categories`}
-          trend={totalProducts > 0 ? `${totalStockCount} Stock` : "0"}
+          subtitle={`${categorySummary.length} categories`}
+          trend={totalProducts > 0 ? `${totalStockCount} Pcs` : "0"}
           trendUp={totalProducts > 0}
           color="blue"
         />
 
         <StatCard
-          icon={<IconAlertCircle className="w-5 h-5 text-white" />}
-          title="Low Stock Alerts"
+          icon={<IconAlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />}
+          title="Low Stock"
           value={lowStockProducts.length}
-          subtitle={lowStockProducts.length > 0 ? `${lowStockProducts.length} items need refill (<5 pcs)` : "All inventory healthy"}
-          trend={lowStockProducts.length > 0 ? "Action Needed" : "Optimal"}
+          subtitle={lowStockProducts.length > 0 ? `${lowStockProducts.length} refill needed` : "Healthy"}
+          trend={lowStockProducts.length > 0 ? "Action" : "Optimal"}
           trendUp={lowStockProducts.length === 0}
           color="purple"
         />
       </div>
 
       {/* ── 3. MAIN DASHBOARD CONTENT GRID ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-7">
 
         {/* Left Column: Category Stock Radar */}
         <div className="lg:col-span-5 space-y-6">

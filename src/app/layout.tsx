@@ -153,16 +153,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Logout Button */}
             <button
               onClick={logout}
-              className="w-9 h-9 rounded-xl flex items-center justify-center border border-transparent hover:border-[#E8CFC5] hover:bg-[#FFF0EA] text-[#6F4A4A] hover:text-[#B82E44] transition-all"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-[#E8CFC5] bg-[#FFF0EA] hover:bg-[#FFE2D8] hover:border-[#B82E44]/40 text-[#7A1021] hover:text-[#B82E44] transition-all text-xs font-bold shadow-xs shrink-0"
               title="Sign Out of Admin Portal"
             >
-              <span className="text-base">🚪</span>
+              <span className="text-sm">🚪</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </header>
 
         {/* Main Dashboard / Page Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto bg-[#FFF9F5]">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-auto bg-[#FFF9F5]">
           {children}
         </main>
       </div>

@@ -76,44 +76,44 @@ export default function StatCard({
 
   return (
     <div
-      className={`${styles.bg} rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group relative overflow-hidden border border-[#E8CFC5] shadow-[0_8px_32px_rgba(53,25,28,0.04)] hover:shadow-md`}
+      className={`${styles.bg} rounded-xl p-3.5 sm:p-5 flex flex-col justify-between transition-all duration-300 group relative overflow-hidden border border-[#E8CFC5] shadow-[0_8px_32px_rgba(53,25,28,0.04)] hover:shadow-md`}
     >
       {/* Subtle Corner Glow */}
-      <div className={`absolute top-0 right-0 w-28 h-28 bg-gradient-to-bl ${styles.glowColor} to-transparent rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-125`} />
+      <div className={`absolute top-0 right-0 w-20 sm:w-28 h-20 sm:h-28 bg-gradient-to-bl ${styles.glowColor} to-transparent rounded-bl-full pointer-events-none transition-transform duration-500 group-hover:scale-125`} />
 
       <div>
-        <div className="flex items-start justify-between mb-4">
-          <div className={`w-11 h-11 rounded ${styles.iconBg} ${styles.iconBorder} flex items-center justify-center transition-transform duration-300 group-hover:scale-105`}>
+        <div className="flex items-start justify-between mb-2.5 sm:mb-4">
+          <div className={`w-8 h-8 sm:w-11 sm:h-11 rounded ${styles.iconBg} ${styles.iconBorder} flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shrink-0`}>
             {icon}
           </div>
 
           {trend && (
             <span
-              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full border shadow-sm ${
+              className={`inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border shadow-2xs ${
                 trendUp
                   ? "bg-emerald-50 text-emerald-800 border-emerald-200"
                   : "bg-amber-50 text-amber-800 border-amber-200"
               }`}
             >
-              <IconTrendingUp className={`w-3 h-3 ${!trendUp && "rotate-180 text-amber-600"}`} />
-              {trend}
+              <IconTrendingUp className={`w-2.5 h-2.5 sm:w-3 sm:h-3 ${!trendUp && "rotate-180 text-amber-600"}`} />
+              <span className="truncate max-w-[80px] sm:max-w-none">{trend}</span>
             </span>
           )}
         </div>
 
-        <p className="text-[11px] font-bold uppercase tracking-widest text-[#6F4A4A] mb-1.5">
+        <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider sm:tracking-widest text-[#6F4A4A] mb-1 sm:mb-1.5 truncate">
           {title}
         </p>
 
-        <p className={`font-serif text-2xl font-extrabold tracking-tight ${styles.valueText} leading-none`}>
+        <p className={`font-serif text-lg sm:text-2xl font-extrabold tracking-tight ${styles.valueText} leading-none truncate`}>
           {value}
         </p>
       </div>
 
       {subtitle && (
-        <div className="pt-3 mt-3 border-t border-[#E8CFC5]/60 flex items-center justify-between text-[11px] text-[#6F4A4A]">
-          <span className="leading-snug">{subtitle}</span>
-          <span className={`w-1.5 h-1.5 rounded-full ${styles.pingColor} group-hover:animate-ping flex-shrink-0 ml-2`} />
+        <div className="pt-2 sm:pt-3 mt-2 sm:mt-3 border-t border-[#E8CFC5]/60 flex items-center justify-between text-[10px] sm:text-[11px] text-[#6F4A4A]">
+          <span className="leading-snug truncate">{subtitle}</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${styles.pingColor} group-hover:animate-ping shrink-0 ml-1.5`} />
         </div>
       )}
     </div>
