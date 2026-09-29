@@ -15,9 +15,7 @@ import {
   IconMenu,
   IconSearch,
   IconArrowUpRight,
-  IconSparkles,
   IconCrown,
-  IconShieldCheck,
 } from "@/components/admin/Icons";
 import { AdminAuthProvider, useAdminAuth } from "@/context/AdminAuthContext";
 import AdminLoginPage from "@/app/login/page";
@@ -41,8 +39,8 @@ function AdminShell({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#2C1417] via-[#35191C] to-[#4A0E17] flex items-center justify-center p-4">
-        <div className="text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#E6C766] flex items-center justify-center font-bold text-2xl mx-auto animate-pulse">
+        <div className="text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-[#D4AF37]/20 border border-[#D4AF37]/40 text-[#E6C766] flex items-center justify-center font-bold text-2xl mx-auto animate-pulse shadow-lg shadow-[#D4AF37]/10">
             👑
           </div>
           <p className="text-xs font-bold text-[#E6C766] uppercase tracking-widest">
@@ -60,6 +58,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // ── AUTHENTICATED ADMIN PORTAL SHELL ──
   const initial = admin.name ? admin.name.charAt(0).toUpperCase() : "A";
+  const firstName = admin.name ? admin.name.split(" ")[0] : "Admin";
   const isSuperAdmin = admin.role === "superadmin";
 
   return (
@@ -73,7 +72,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
       {/* Main Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation Bar */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-[#E8CFC5] px-4 sm:px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-30">
+        <header className="bg-[#FFFDFC] backdrop-blur-md border-b border-[#E8CFC5] px-4 sm:px-6 py-3 flex items-center justify-between shadow-[0_4px_20px_rgba(53,25,28,0.04)] sticky top-0 z-30 gap-4">
           {/* Left Side: Mobile Menu Button & Brand Badge */}
           <div className="flex items-center gap-3">
             <button
@@ -88,11 +87,11 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#B82E44] to-[#7C1B2A] text-white flex items-center justify-center font-serif font-bold text-base shadow-sm">
                 K
               </span>
-              <div>
+              <div className="hidden sm:block">
                 <h1 className="font-serif text-base sm:text-lg text-[#7C1B2A] font-bold leading-tight">
                   Keshar Jewellers
                 </h1>
-                <span className="hidden sm:inline-block text-[10px] font-bold uppercase tracking-wider text-[#A77C18]">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#A77C18]">
                   Control Center
                 </span>
               </div>
@@ -100,31 +99,49 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Center Search Input */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FFF0EA]/70 border border-[#E8CFC5] text-xs w-64 lg:w-72 focus-within:border-[#B82E44] focus-within:bg-white transition-all shadow-xs">
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[#FFF9F5] border border-[#E8CFC5] text-xs w-64 lg:w-80 focus-within:border-[#D4AF37] focus-within:ring-1 focus-within:ring-[#D4AF37]/30 transition-all shadow-sm">
             <IconSearch className="w-4 h-4 text-[#6F4A4A] shrink-0" />
             <input
               type="text"
               placeholder="Search products, SKU, or orders..."
               className="bg-transparent border-none outline-none w-full text-xs text-[#35191C] placeholder-[#6F4A4A]/60"
             />
+            <kbd className="hidden lg:inline-flex text-[10px] bg-[#FFFDFC] border border-[#E8CFC5] rounded px-1.5 py-0.5 text-[#6F4A4A] font-mono">
+              ⌘K
+            </kbd>
           </div>
 
-          {/* Right Side: Logged In Admin Profile & Logout */}
-          <div className="flex items-center gap-3 text-xs font-semibold">
+          {/* Right Side: Admin Profile & Actions */}
+          <div className="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
+            {/* Notification Bell */}
+            <button
+              className="relative w-9 h-9 rounded-xl flex items-center justify-center bg-[#FFF9F5] border border-[#E8CFC5] hover:border-[#D4AF37]/60 text-[#35191C] hover:text-[#7A1021] transition-all"
+              title="Notifications"
+            >
+              <span className="text-base">🔔</span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#B82E44] ring-2 ring-[#FFFDFC]" />
+            </button>
+
+            {/* Divider */}
+            <div className="hidden sm:block h-7 w-px bg-[#E8CFC5]" />
+
             {/* Admin Avatar Badge */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FFF0EA] border border-[#E8CFC5]">
-              <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shadow-xs ${
-                  isSuperAdmin
-                    ? "bg-gradient-to-br from-[#E6C766] to-[#D4AF37] text-[#35191C]"
-                    : "bg-gradient-to-br from-[#B82E44] to-[#7C1B2A] text-white"
-                }`}
-              >
-                {initial}
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#FFF0EA] border border-[#E8CFC5] cursor-pointer hover:border-[#D4AF37]/40 transition-all">
+              <div className="relative">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shadow-sm border-2 ${
+                    isSuperAdmin
+                      ? "bg-gradient-to-br from-[#E6C766] to-[#D4AF37] text-[#35191C] border-[#D4AF37]/60"
+                      : "bg-gradient-to-br from-[#B82E44] to-[#7C1B2A] text-white border-[#B82E44]/40"
+                  }`}
+                >
+                  {initial}
+                </div>
+                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#FFF0EA]" />
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold text-[#35191C] leading-tight flex items-center gap-1">
-                  {admin.name.split(" ")[0]}
+                  {firstName}
                   {isSuperAdmin && <IconCrown className="w-3 h-3 text-[#A77C18] inline" />}
                 </p>
                 <span className="text-[9px] font-bold uppercase tracking-wider text-[#7C1B2A] block">
@@ -136,17 +153,17 @@ function AdminShell({ children }: { children: React.ReactNode }) {
             {/* Logout Button */}
             <button
               onClick={logout}
-              className="px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-800 border border-red-200 transition-all flex items-center gap-1 text-xs font-bold"
+              className="px-2.5 sm:px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-[#E8CFC5] bg-[#FFF0EA] hover:bg-[#FFE2D8] hover:border-[#B82E44]/40 text-[#7A1021] hover:text-[#B82E44] transition-all text-xs font-bold shadow-xs shrink-0"
               title="Sign Out of Admin Portal"
             >
-              <span>Logout</span>
-              <span className="text-xs">🚪</span>
+              <span className="text-sm">🚪</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </header>
 
         {/* Main Dashboard / Page Body */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 p-3 sm:p-6 lg:p-8 overflow-auto bg-[#FFF9F5]">
           {children}
         </main>
       </div>
@@ -169,7 +186,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${playfair.variable} ${lato.variable} antialiased min-h-screen bg-[#FFF9F5] text-[#2C1417] selection:bg-[#B82E44] selection:text-white`}
+        className={`${playfair.variable} ${lato.variable} antialiased min-h-screen bg-[#FFF9F5] text-[#2C1417] selection:bg-[#D4AF37]/30 selection:text-[#35191C]`}
       >
         <AdminAuthProvider>
           <AdminShell>{children}</AdminShell>
