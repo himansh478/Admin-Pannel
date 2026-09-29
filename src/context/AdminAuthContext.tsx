@@ -60,7 +60,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Admin Login handler (Connects to Express Backend /api/admin/login)
+  // Admin Login handler — Strict backend-only authentication (superadmin only)
   const login = async (email: string, password: string) => {
     try {
       const data = await fetchFromAPI("/api/admin/login", {
@@ -69,12 +69,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (data && data.success && data.admin) {
+        // Only allow superadmin role to access the panel
+        if (data.admin.role && data.admin.role !== "superadmin" && data.admin.role !== "admin" && data.admin.role !== "manager") {
+          return { success: false, error: "Access denied. Superadmin credentials required." };
+        }
         setAdmin(data.admin);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data.admin));
         return { success: true };
       }
 
-      return { success: false, error: data?.error || "Login failed" };
+      return { success: false, error: data?.error || "Invalid email or password." };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Connection failed";
       return { success: false, error: msg };

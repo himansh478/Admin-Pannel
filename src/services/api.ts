@@ -84,30 +84,31 @@ export async function fetchFromAPI(
     console.warn(`Primary backend request failed for ${targetUrl}:`, err);
   }
 
-  // 2. Fallback Attempt (If primary request failed or timed out, retry)
-  try {
-    await new Promise((r) => setTimeout(r, 1000));
-    const resFallback = await fetch(targetUrl, {
-      ...options,
-      headers,
-    });
+  // 2. Fallback Attempt (If primary local request failed, fallback to Live Render Backend API)
+  const fallbackUrl = getBackendURL(endpoint, API_URL);
+  if (fallbackUrl !== targetUrl) {
+    try {
+      const resFallback = await fetch(fallbackUrl, {
+        ...options,
+        headers,
+      });
 
-    if (resFallback.ok) {
-      const dataFallback = await resFallback.json().catch(() => null);
-      if (dataFallback) {
-        return dataFallback;
+      if (resFallback.ok) {
+        const dataFallback = await resFallback.json().catch(() => null);
+        if (dataFallback) {
+          return dataFallback;
+        }
+        return { success: true };
       }
-      return { success: true };
+    } catch (fallbackErr) {
+      console.error(`Fallback backend request failed for ${fallbackUrl}:`, fallbackErr);
     }
-    const errData = await resFallback.json().catch(() => null);
-    return errData || { success: false, error: `Backend returned error ${resFallback.status}` };
-  } catch (fallbackErr) {
-    console.error(`Fallback backend request failed for ${targetUrl}:`, fallbackErr);
-    return {
-      success: false,
-      error: "Backend connection failed. Please check that the backend server is running.",
-    };
   }
+
+  return {
+    success: false,
+    error: "Backend connection failed. Please check network or backend server status.",
+  };
 }
 
 async function sha1Hex(str: string): Promise<string> {
