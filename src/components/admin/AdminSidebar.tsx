@@ -28,18 +28,6 @@ interface AdminSidebarProps {
   onCloseMobile?: () => void;
 }
 
-<<<<<<< HEAD
-const NAV_ITEMS = [
-  { label: "Dashboard",  href: "/",           icon: IconSparkles, badge: null },
-  { label: "Products",   href: "/products",   icon: IconPackage,  badge: "Catalog" },
-  { label: "Inventory",  href: "/inventory",  icon: IconLayers,   badge: null },
-  { label: "Orders",     href: "/orders",     icon: IconShoppingCart, badge: "Live" },
-  { label: "Exchanges",  href: "/exchanges",  icon: IconTag,       badge: "Issues" },
-  { label: "Users",      href: "/users",      icon: IconUsers,     badge: "Members" },
-  { label: "Analytics",  href: "/analytics",  icon: IconTrendingUp, badge: null },
-  { label: 'Offers',     href: '/offers',     icon: IconTag,       badge: 'Deals' },
-  { label: 'Gifts',      href: '/gifts',      icon: IconGift,      badge: null },
-=======
 const NAV_GROUPS = [
   {
     label: "Main Control Center",
@@ -48,6 +36,7 @@ const NAV_GROUPS = [
       { label: "Products",   href: "/products",   icon: IconPackage,      badge: "Catalog" },
       { label: "Inventory",  href: "/inventory",  icon: IconLayers,       badge: null },
       { label: "Orders",     href: "/orders",     icon: IconShoppingCart, badge: "Live" },
+      { label: "Exchanges",  href: "/exchanges",  icon: IconTag,          badge: "Issues" },
       { label: "Users",      href: "/users",      icon: IconUsers,        badge: "Members" },
     ],
   },
@@ -55,10 +44,10 @@ const NAV_GROUPS = [
     label: "Intelligence & Marketing",
     items: [
       { label: "Analytics",  href: "/analytics",  icon: IconTrendingUp,   badge: null },
+      { label: "Offers",     href: "/offers",     icon: IconTag,          badge: "Deals" },
       { label: "Gifts",      href: "/gifts",      icon: IconGift,         badge: null },
     ],
   },
->>>>>>> d3e176d694ec270e5329d5503a604b7f3729fd9a
 ];
 
 export default function AdminSidebar({

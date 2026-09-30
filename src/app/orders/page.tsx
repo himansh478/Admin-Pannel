@@ -201,9 +201,12 @@ export default function OrdersPage() {
       if (data && data.success) {
         showToast("success", "Order record deleted.");
         fetchOrders();
+      } else {
+        showToast("error", data?.error || "Failed to delete order.");
       }
     } catch (error) {
       console.error("Failed to delete order", error);
+      showToast("error", "Error deleting order.");
     }
   };
 
