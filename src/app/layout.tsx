@@ -58,7 +58,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
 
   // ── AUTHENTICATED ADMIN PORTAL SHELL ──
   const initial = admin.name ? admin.name.charAt(0).toUpperCase() : "A";
-  const firstName = admin.name ? admin.name.split(" ")[0] : "Admin";
+  const fullName = admin.name || "Admin";
   const isSuperAdmin = admin.role === "superadmin";
 
   return (
@@ -141,7 +141,7 @@ function AdminShell({ children }: { children: React.ReactNode }) {
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-bold text-[#35191C] leading-tight flex items-center gap-1">
-                  {firstName}
+                  {fullName}
                   {isSuperAdmin && <IconCrown className="w-3 h-3 text-[#A77C18] inline" />}
                 </p>
                 <span className="text-[9px] font-bold uppercase tracking-wider text-[#7C1B2A] block">

@@ -45,19 +45,44 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   // Restore saved session on app mount
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.email) {
-          setAdmin(parsed);
+    const restoreSession = async () => {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.email) {
+            // Optimistic local load
+            setAdmin(parsed);
+
+            // Fetch latest profile from DB to get actual name and role
+            if (parsed.token) {
+              try {
+                const result = await fetchFromAPI("/api/admin/profile", {
+                  headers: {
+                    Authorization: `Bearer ${parsed.token}`
+                  }
+                });
+                
+                if (result && result.success && result.admin) {
+                  // Merge token as getAdminProfile might not return it
+                  const updatedAdmin = { ...result.admin, token: parsed.token };
+                  setAdmin(updatedAdmin);
+                  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedAdmin));
+                }
+              } catch (err) {
+                console.error("Failed to fetch latest admin profile:", err);
+              }
+            }
+          }
         }
+      } catch (e) {
+        console.error("Failed to restore admin auth session:", e);
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      console.error("Failed to restore admin auth session:", e);
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    restoreSession();
   }, []);
 
   // Admin Login handler — Strict backend-only authentication (superadmin only)
