@@ -50,6 +50,8 @@ export default function ProductsPage() {
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({});
+  const [backgroundUploading, setBackgroundUploading] = useState<Record<string, boolean>>({});
   const [imageUploadMode, setImageUploadMode] = useState<"file" | "url">("file");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -101,6 +103,7 @@ export default function ProductsPage() {
   // Handle Edit Click
   const handleEditClick = (product: Product) => {
     setEditingProductId(product.id);
+    setLocalPreviews({});
     setFormData({
       category: product.category || "nose-pins",
       productType: product.productType || "",
@@ -133,32 +136,48 @@ export default function ProductsPage() {
       return;
     }
 
-    try {
-      setUploadingField(field);
-      setUploadProgress((prev) => ({ ...prev, [field]: 0 }));
+    // --- OPTIMISTIC UI (Zero Wait) ---
+    // Instantly show the local file in the UI so admin can continue typing
+    const previewUrl = URL.createObjectURL(file);
+    setLocalPreviews((prev) => ({ ...prev, [field]: previewUrl }));
+    setBackgroundUploading((prev) => ({ ...prev, [field]: true }));
+    setUploadProgress((prev) => ({ ...prev, [field]: 0 }));
 
+    try {
+      // Upload happens silently in the background
       const result = await uploadFileToAPI(file, "products", (pct) => {
         setUploadProgress((prev) => ({ ...prev, [field]: pct }));
       });
 
       if (result && result.success && result.url) {
+        // Swap local preview URL with real Cloudinary URL in formData
         setFormData((prev) => ({ ...prev, [field]: result.url! }));
-        showToast("success", "Photo uploaded to Cloudinary! 💎");
+        showToast("success", "Background upload complete! ✅");
       } else {
-        showToast("error", result?.error || "Upload failed. Please check network/backend.");
+        showToast("error", result?.error || "Background upload failed.");
+        // Revert preview on fail
+        setLocalPreviews((prev) => ({ ...prev, [field]: "" }));
       }
     } catch (error: any) {
       console.error("Upload failed", error);
       showToast("error", error?.message || "Failed to upload image.");
+      setLocalPreviews((prev) => ({ ...prev, [field]: "" }));
     } finally {
-      setUploadingField(null);
-      setUploadProgress((prev) => ({ ...prev, [field]: 0 }));
+      setBackgroundUploading((prev) => ({ ...prev, [field]: false }));
+      // Let the 100% progress stay for a second or just leave it
     }
   };
 
   // 1. Single Product Submission (Create or Update)
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevent saving if images are still uploading in the background
+    const isAnyUploading = Object.values(backgroundUploading).some(Boolean);
+    if (isAnyUploading) {
+      showToast("error", "Please wait, photos are finalizing...");
+      return;
+    }
 
     if (!formData.productType.trim()) {
       showToast("error", "Product Type is required.");
@@ -207,6 +226,7 @@ export default function ProductsPage() {
         showToast("success", isEditing ? "Product updated successfully!" : "Product published to store successfully!");
         setShowAddModal(false);
         setEditingProductId(null);
+        setLocalPreviews({});
         setFormData({
           category: "nose-pins",
           productType: "",
@@ -806,6 +826,7 @@ export default function ProductsPage() {
           <button
             onClick={() => {
               setEditingProductId(null);
+              setLocalPreviews({});
               setFormData({
                 category: "nose-pins",
                 productType: "",
@@ -1483,6 +1504,167 @@ export default function ProductsPage() {
             </div>
 
             <form onSubmit={handleAddProduct} className="space-y-4 text-xs">
+              {/* Product Photos (File Upload & URL toggle) */}
+              <div className="space-y-3 pt-3 border-t border-[#E8CFC5]">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-[#35191C]">
+                    10. Product Photos (Front, Back, Model)
+                  </label>
+                  <div className="flex items-center gap-1 bg-[#FFF0EA] p-1 rounded-lg border border-[#E8CFC5] text-[10px]">
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode("file")}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        imageUploadMode === "file"
+                          ? "bg-[#B82E44] text-white shadow-sm"
+                          : "text-[#6F4A4A] hover:text-[#B82E44]"
+                      }`}
+                    >
+                      📁 Upload Files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setImageUploadMode("url")}
+                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
+                        imageUploadMode === "url"
+                          ? "bg-[#B82E44] text-white shadow-sm"
+                          : "text-[#6F4A4A] hover:text-[#B82E44]"
+                      }`}
+                    >
+                      🔗 Image URLs
+                    </button>
+                  </div>
+                </div>
+
+                {imageUploadMode === "file" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {(
+                      [
+                        { field: "frontImage" as const, label: "Front Photo", emoji: "📸", required: true },
+                        { field: "backImage" as const, label: "Back Photo", emoji: "📷", required: false },
+                        { field: "modelImage" as const, label: "Model Photo", emoji: "💃", required: false },
+                      ] as const
+                    ).map(({ field, label, emoji, required }) => {
+                      const isBackgroundUploading = backgroundUploading[field];
+                      const pct = uploadProgress[field] ?? 0;
+                      // Show local preview immediately if exists, else Cloudinary URL
+                      const displayUrl = localPreviews[field] || formData[field];
+
+                      return (
+                        <div key={field} className="flex flex-col gap-2">
+                          {/* Label */}
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-[#7C1B2A] text-xs">{label}</span>
+                            {required && <span className="text-[#B82E44] text-xs">*</span>}
+                            {!required && <span className="text-[10px] text-[#9B7B6A]">(optional)</span>}
+                          </div>
+
+                          {/* Upload Area */}
+                          {displayUrl ? (
+                            /* Preview State (Local or Cloudinary) */
+                            <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-[#B82E44] group">
+                              <img src={displayUrl} alt={label} className={`w-full h-full object-cover transition-opacity ${isBackgroundUploading ? 'opacity-50 blur-[1px]' : ''}`} />
+                              
+                              {/* Background Uploading Overlay */}
+                              {isBackgroundUploading && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 backdrop-blur-sm z-10">
+                                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mb-2" />
+                                  <div className="w-3/4 bg-white/30 rounded-full h-1.5 overflow-hidden">
+                                    <div className="h-full bg-white rounded-full transition-all duration-200" style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="text-white text-[10px] font-bold mt-1 tracking-wider drop-shadow-md">
+                                    {pct < 10 ? "PROCESSING" : `UPLOADING ${pct}%`}
+                                  </span>
+                                </div>
+                              )}
+
+                              {/* Remove Button (Hide while uploading) */}
+                              {!isBackgroundUploading && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData((prev) => ({ ...prev, [field]: "" }));
+                                    setLocalPreviews((prev) => ({ ...prev, [field]: "" }));
+                                  }}
+                                  className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-20"
+                                >
+                                  ✕ Remove
+                                </button>
+                              )}
+
+                              {/* Change Photo Overlay (Hide while uploading) */}
+                              {!isBackgroundUploading && (
+                                <label className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] font-bold text-center py-1.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-20">
+                                  📷 Change Photo
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleImageFileChange(e, field)}
+                                    className="hidden"
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          ) : (
+                            /* Empty — Tap to Upload */
+                            <label className="w-full h-36 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] active:border-[#B82E44] bg-white hover:bg-[#FFF8F5] rounded-2xl flex flex-col items-center justify-center cursor-pointer gap-1.5 transition-all touch-manipulation">
+                              <span className="text-3xl">{emoji}</span>
+                              <span className="text-xs font-bold text-[#B82E44]">Tap to upload {label}</span>
+                              <span className="text-[10px] text-[#9B7B6A]">Auto-compresses big photos ✨</span>
+                              {/* Gallery input */}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageFileChange(e, field)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+
+                          {/* Camera Button — only when no image and not uploading */}
+                          {!displayUrl && !isBackgroundUploading && (
+                            <label className="w-full py-2 border border-[#E8CFC5] bg-[#FFF0EA]/60 hover:bg-[#FFF0EA] rounded-xl text-[11px] font-semibold text-[#7C1B2A] text-center cursor-pointer flex items-center justify-center gap-1 transition-all touch-manipulation">
+                              📷 Open Camera
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) => handleImageFileChange(e, field)}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Front Image URL (Cloudinary / Drive link / Web link)"
+                      value={formData.frontImage}
+                      onChange={(e) => setFormData({ ...formData, frontImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Back Image URL (optional)"
+                      value={formData.backImage}
+                      onChange={(e) => setFormData({ ...formData, backImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Model Wearing Image URL (optional)"
+                      value={formData.modelImage}
+                      onChange={(e) => setFormData({ ...formData, modelImage: e.target.value })}
+                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* Category & Product Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -1639,173 +1821,31 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Product Photos (File Upload & URL toggle) */}
-              <div className="space-y-3 pt-3 border-t border-[#E8CFC5]">
-                <div className="flex items-center justify-between">
-                  <label className="block font-bold text-[#35191C]">
-                    10. Product Photos (Front, Back, Model)
-                  </label>
-                  <div className="flex items-center gap-1 bg-[#FFF0EA] p-1 rounded-lg border border-[#E8CFC5] text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setImageUploadMode("file")}
-                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
-                        imageUploadMode === "file"
-                          ? "bg-[#B82E44] text-white shadow-sm"
-                          : "text-[#6F4A4A] hover:text-[#B82E44]"
-                      }`}
-                    >
-                      📁 Upload Files
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setImageUploadMode("url")}
-                      className={`px-2.5 py-1 rounded-md font-bold transition-all ${
-                        imageUploadMode === "url"
-                          ? "bg-[#B82E44] text-white shadow-sm"
-                          : "text-[#6F4A4A] hover:text-[#B82E44]"
-                      }`}
-                    >
-                      🔗 Image URLs
-                    </button>
-                  </div>
-                </div>
-
-                {imageUploadMode === "file" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {(
-                      [
-                        { field: "frontImage" as const, label: "Front Photo", emoji: "📸", required: true },
-                        { field: "backImage" as const, label: "Back Photo", emoji: "📷", required: false },
-                        { field: "modelImage" as const, label: "Model Photo", emoji: "💃", required: false },
-                      ] as const
-                    ).map(({ field, label, emoji, required }) => {
-                      const isUploading = uploadingField === field;
-                      const pct = uploadProgress[field] ?? 0;
-                      const imageUrl = formData[field];
-
-                      return (
-                        <div key={field} className="flex flex-col gap-2">
-                          {/* Label */}
-                          <div className="flex items-center gap-1">
-                            <span className="font-bold text-[#7C1B2A] text-xs">{label}</span>
-                            {required && <span className="text-[#B82E44] text-xs">*</span>}
-                            {!required && <span className="text-[10px] text-[#9B7B6A]">(optional)</span>}
-                          </div>
-
-                          {/* Upload Area */}
-                          {isUploading ? (
-                            /* Progress State */
-                            <div className="w-full h-36 border-2 border-[#B82E44] bg-[#FFF0EA] rounded-2xl flex flex-col items-center justify-center gap-2 p-4">
-                              <div className="w-8 h-8 border-3 border-[#B82E44] border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
-                              <div className="w-full bg-[#E8CFC5] rounded-full h-2 overflow-hidden">
-                                <div
-                                  className="h-full bg-[#B82E44] rounded-full transition-all duration-200"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <span className="text-xs font-bold text-[#B82E44]">
-                                {pct < 10 ? "Compressing... 🗜️" : `Uploading ${pct}% ☁️`}
-                              </span>
-                            </div>
-                          ) : imageUrl ? (
-                            /* Preview State */
-                            <div className="relative w-full h-36 rounded-2xl overflow-hidden border-2 border-[#B82E44] group">
-                              <img src={imageUrl} alt={label} className="w-full h-full object-cover" />
-                              {/* Remove Button — always visible on touch, hover on desktop */}
-                              <button
-                                type="button"
-                                onClick={() => setFormData((prev) => ({ ...prev, [field]: "" }))}
-                                className="absolute top-2 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-lg shadow-lg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
-                              >
-                                ✕ Remove
-                              </button>
-                              {/* Change Photo overlay */}
-                              <label className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] font-bold text-center py-1.5 cursor-pointer opacity-0 group-hover:opacity-100 transition-all">
-                                📷 Change Photo
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => handleImageFileChange(e, field)}
-                                  className="hidden"
-                                />
-                              </label>
-                            </div>
-                          ) : (
-                            /* Empty — Tap to Upload */
-                            <label className="w-full h-36 border-2 border-dashed border-[#B82E44]/40 hover:border-[#B82E44] active:border-[#B82E44] bg-white hover:bg-[#FFF8F5] rounded-2xl flex flex-col items-center justify-center cursor-pointer gap-1.5 transition-all touch-manipulation">
-                              <span className="text-3xl">{emoji}</span>
-                              <span className="text-xs font-bold text-[#B82E44]">Tap to upload {label}</span>
-                              <span className="text-[10px] text-[#9B7B6A]">Auto-compresses big photos ✨</span>
-                              {/* Gallery input */}
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageFileChange(e, field)}
-                                className="hidden"
-                              />
-                            </label>
-                          )}
-
-                          {/* Camera Button — only when no image and not uploading */}
-                          {!imageUrl && !isUploading && (
-                            <label className="w-full py-2 border border-[#E8CFC5] bg-[#FFF0EA]/60 hover:bg-[#FFF0EA] rounded-xl text-[11px] font-semibold text-[#7C1B2A] text-center cursor-pointer flex items-center justify-center gap-1 transition-all touch-manipulation">
-                              📷 Open Camera
-                              <input
-                                type="file"
-                                accept="image/*"
-                                capture="environment"
-                                onChange={(e) => handleImageFileChange(e, field)}
-                                className="hidden"
-                              />
-                            </label>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      placeholder="Front Image URL (Cloudinary / Drive link / Web link)"
-                      value={formData.frontImage}
-                      onChange={(e) => setFormData({ ...formData, frontImage: e.target.value })}
-                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Back Image URL (optional)"
-                      value={formData.backImage}
-                      onChange={(e) => setFormData({ ...formData, backImage: e.target.value })}
-                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Model Wearing Image URL (optional)"
-                      value={formData.modelImage}
-                      onChange={(e) => setFormData({ ...formData, modelImage: e.target.value })}
-                      className="w-full p-2.5 bg-[#FFF0EA]/40 border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44]"
-                    />
-                  </div>
-                )}
-              </div>
-
               {/* Actions */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E8CFC5]">
                 <button
                   type="button"
-                  onClick={() => { setShowAddModal(false); setEditingProductId(null); }}
+                  onClick={() => { setShowAddModal(false); setEditingProductId(null); setLocalPreviews({}); }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 text-xs font-semibold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="px-6 py-2.5 bg-[#B82E44] hover:bg-[#7C1B2A] text-[#FFF8F0] font-bold uppercase tracking-wider rounded-xl shadow-md transition-all text-xs"
+                  disabled={isLoading || Object.values(backgroundUploading).some(Boolean)}
+                  className={`px-6 py-2.5 font-bold uppercase tracking-wider rounded-xl shadow-md transition-all text-xs ${
+                    Object.values(backgroundUploading).some(Boolean)
+                      ? "bg-gray-400 text-white cursor-not-allowed"
+                      : "bg-[#B82E44] hover:bg-[#7C1B2A] text-[#FFF8F0]"
+                  }`}
                 >
-                  {isLoading ? "Saving..." : (editingProductId ? "💾 Update Product" : "Save Product")}
+                  {isLoading
+                    ? "Saving..."
+                    : Object.values(backgroundUploading).some(Boolean)
+                    ? "⏳ Finalizing Photos..."
+                    : editingProductId
+                    ? "💾 Update Product"
+                    : "Save Product"}
                 </button>
               </div>
 
