@@ -8,6 +8,7 @@ export interface Product {
   dimensionW: string;     // e.g. "8mm"
   dimensionH: string;     // e.g. "7mm"
   weight: string;         // e.g. "0.640mg"
+  ankletType?: string;    // e.g. "Single" or "Pair"
   sellingPrice: number;   // e.g. 540
   mrp: number;            // e.g. 756
   frontImage: string;     // path or URL

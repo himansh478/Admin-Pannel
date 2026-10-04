@@ -72,6 +72,8 @@ export default function ProductsPage() {
     modelImage: "",
   });
 
+  const [ankletType, setAnkletType] = useState<"Single" | "Pair" | "">("");
+
   const showToast = (type: "success" | "error", text: string) => {
     setStatusMessage({ type, text });
     setTimeout(() => setStatusMessage(null), 5000);
@@ -101,6 +103,7 @@ export default function ProductsPage() {
   // Handle Edit Click
   const handleEditClick = (product: Product) => {
     setEditingProductId(product.id);
+    setAnkletType(product.ankletType === "Single" || product.ankletType === "Pair" ? product.ankletType : "");
     setFormData({
       category: product.category || "nose-pins",
       productType: product.productType || "",
@@ -189,9 +192,19 @@ export default function ProductsPage() {
     try {
       setIsLoading(true);
       const isEditing = Boolean(editingProductId);
+
+      let finalProductType = formData.productType;
+      if (formData.category === "anklets" && ankletType) {
+        if (!finalProductType.includes(`(${ankletType})`)) {
+          finalProductType = `${finalProductType.trim()} (${ankletType})`;
+        }
+      }
+
       const payload = {
         ...(isEditing ? { id: editingProductId } : {}),
         ...formData,
+        productType: finalProductType,
+        ankletType: formData.category === "anklets" ? ankletType : "",
         sellingPrice: Number(formData.sellingPrice),
         mrp: Number(formData.mrp) || Number(formData.sellingPrice),
         stock: Number(formData.stock) || 0,
@@ -223,6 +236,7 @@ export default function ProductsPage() {
           backImage: "",
           modelImage: "",
         });
+        setAnkletType("");
         await fetchProducts();
       } else {
         showToast("error", data?.error || "Failed to save product.");
@@ -1475,7 +1489,7 @@ export default function ProductsPage() {
                 {editingProductId ? "✏️ Edit Product Details" : "Add Single Product"}
               </h3>
               <button
-                onClick={() => { setShowAddModal(false); setEditingProductId(null); }}
+                onClick={() => { setShowAddModal(false); setEditingProductId(null); setAnkletType(""); }}
                 className="text-gray-400 hover:text-gray-700 text-lg font-bold"
               >
                 ✕
@@ -1516,6 +1530,41 @@ export default function ProductsPage() {
                   />
                 </div>
               </div>
+
+              {/* Anklet Type Selection (Single/Pair) */}
+              {formData.category === "anklets" && (
+                <div className="p-3 bg-[#FFF0EA]/60 border border-[#E8CFC5] rounded-xl mt-4">
+                  <label className="block font-bold text-[#35191C] mb-2">
+                    Anklet Type: Single or Pair *
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ankletType"
+                        value="Single"
+                        checked={ankletType === "Single"}
+                        onChange={() => setAnkletType("Single")}
+                        className="accent-[#B82E44] w-4 h-4"
+                        required
+                      />
+                      <span className="text-[#35191C] font-semibold">Single Anklet</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="ankletType"
+                        value="Pair"
+                        checked={ankletType === "Pair"}
+                        onChange={() => setAnkletType("Pair")}
+                        className="accent-[#B82E44] w-4 h-4"
+                        required
+                      />
+                      <span className="text-[#35191C] font-semibold">Pair of Anklets</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* Description */}
               <div>
