@@ -127,14 +127,18 @@ async function sha1Hex(str: string): Promise<string> {
 async function compressImage(file: File): Promise<File> {
   try {
     const imageCompression = (await import("browser-image-compression")).default;
+    // SMART SCALING: Focus on perfect resolution for zoom (1500px max)
+    // No maxSizeMB limit, maintain 95% quality (0.95). 
+    // This removes heavy JPEG artifacts while significantly reducing raw 10MB sizes.
     const options = {
-      maxSizeMB: 0.4,
-      maxWidthOrHeight: 1920,
+      maxWidthOrHeight: 1500,
+      initialQuality: 0.95,
       useWebWorker: true,
+      fileType: "image/webp"
     };
     const compressed = await imageCompression(file, options);
-    return new File([compressed], file.name, {
-      type: compressed.type || file.type,
+    return new File([compressed], file.name.replace(/\.[^/.]+$/, ".webp"), {
+      type: "image/webp",
       lastModified: Date.now(),
     });
   } catch (err) {
