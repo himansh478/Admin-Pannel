@@ -66,6 +66,8 @@ export default function ProductsPage() {
     dimensionW: "8mm",
     dimensionH: "7mm",
     weight: "",
+    singlePrice: "",
+    pairPrice: "",
     sellingPrice: "",
     mrp: "",
     stock: "",
@@ -74,7 +76,6 @@ export default function ProductsPage() {
     modelImage: "",
   });
 
-  const [ankletType, setAnkletType] = useState<"Single" | "Pair" | "">("");
 
   const showToast = (type: "success" | "error", text: string) => {
     setStatusMessage({ type, text });
@@ -105,11 +106,7 @@ export default function ProductsPage() {
   // Handle Edit Click
   const handleEditClick = (product: Product) => {
     setEditingProductId(product.id);
-<<<<<<< HEAD
-    setAnkletType(product.ankletType === "Single" || product.ankletType === "Pair" ? product.ankletType : "");
-=======
     setLocalPreviews({});
->>>>>>> 25214dbb16dcc7fd36ac2571270fe6cb302feec5
     setFormData({
       category: product.category || "nose-pins",
       productType: product.productType || "",
@@ -119,6 +116,8 @@ export default function ProductsPage() {
       dimensionW: product.dimensionW || "",
       dimensionH: product.dimensionH || "",
       weight: product.weight || "",
+      singlePrice: String(product.singlePrice || ""),
+      pairPrice: String(product.pairPrice || ""),
       sellingPrice: String(product.sellingPrice || ""),
       mrp: String(product.mrp || ""),
       stock: String(product.stock ?? 0),
@@ -214,19 +213,11 @@ export default function ProductsPage() {
     try {
       setIsLoading(true);
       const isEditing = Boolean(editingProductId);
-
-      let finalProductType = formData.productType;
-      if (formData.category === "anklets" && ankletType) {
-        if (!finalProductType.includes(`(${ankletType})`)) {
-          finalProductType = `${finalProductType.trim()} (${ankletType})`;
-        }
-      }
-
       const payload = {
         ...(isEditing ? { id: editingProductId } : {}),
         ...formData,
-        productType: finalProductType,
-        ankletType: formData.category === "anklets" ? ankletType : "",
+        singlePrice: formData.category === "anklets" ? Number(formData.singlePrice) || 0 : 0,
+        pairPrice: formData.category === "anklets" ? Number(formData.pairPrice) || 0 : 0,
         sellingPrice: Number(formData.sellingPrice),
         mrp: Number(formData.mrp) || Number(formData.sellingPrice),
         stock: Number(formData.stock) || 0,
@@ -252,6 +243,8 @@ export default function ProductsPage() {
           dimensionW: "8mm",
           dimensionH: "7mm",
           weight: "",
+          singlePrice: "",
+          pairPrice: "",
           sellingPrice: "",
           mrp: "",
           stock: "",
@@ -259,7 +252,6 @@ export default function ProductsPage() {
           backImage: "",
           modelImage: "",
         });
-        setAnkletType("");
         await fetchProducts();
       } else {
         showToast("error", data?.error || "Failed to save product.");
@@ -1716,37 +1708,39 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              {/* Anklet Type Selection (Single/Pair) */}
+              {/* Anklet Special Prices (Single/Pair) */}
               {formData.category === "anklets" && (
-                <div className="p-3 bg-[#FFF0EA]/60 border border-[#E8CFC5] rounded-xl mt-4">
-                  <label className="block font-bold text-[#35191C] mb-2">
-                    Anklet Type: Single or Pair *
+                <div className="p-3 bg-[#FFF0EA]/60 border border-[#E8CFC5] rounded-xl mt-4 space-y-3">
+                  <label className="block font-bold text-[#35191C]">
+                    Anklet Prices (Single & Pair) *
                   </label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block font-semibold text-xs text-[#35191C] mb-1">
+                        Single Anklet Price (₹)
+                      </label>
                       <input
-                        type="radio"
-                        name="ankletType"
-                        value="Single"
-                        checked={ankletType === "Single"}
-                        onChange={() => setAnkletType("Single")}
-                        className="accent-[#B82E44] w-4 h-4"
+                        type="number"
+                        placeholder="e.g. 250"
+                        value={formData.singlePrice}
+                        onChange={(e) => setFormData({ ...formData, singlePrice: e.target.value })}
+                        className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44] text-[#B82E44] font-bold"
                         required
                       />
-                      <span className="text-[#35191C] font-semibold">Single Anklet</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-xs text-[#35191C] mb-1">
+                        Pair Anklet Price (₹)
+                      </label>
                       <input
-                        type="radio"
-                        name="ankletType"
-                        value="Pair"
-                        checked={ankletType === "Pair"}
-                        onChange={() => setAnkletType("Pair")}
-                        className="accent-[#B82E44] w-4 h-4"
+                        type="number"
+                        placeholder="e.g. 500"
+                        value={formData.pairPrice}
+                        onChange={(e) => setFormData({ ...formData, pairPrice: e.target.value })}
+                        className="w-full p-2.5 bg-white border border-[#E8CFC5] rounded-xl focus:outline-none focus:border-[#B82E44] text-[#B82E44] font-bold"
                         required
                       />
-                      <span className="text-[#35191C] font-semibold">Pair of Anklets</span>
-                    </label>
+                    </div>
                   </div>
                 </div>
               )}
