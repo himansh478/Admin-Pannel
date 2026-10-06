@@ -845,6 +845,8 @@ export default function ProductsPage() {
                 dimensionW: "8mm",
                 dimensionH: "7mm",
                 weight: "",
+                singlePrice: "",
+                pairPrice: "",
                 sellingPrice: "",
                 mrp: "",
                 stock: "",
@@ -1505,7 +1507,7 @@ export default function ProductsPage() {
                 {editingProductId ? "✏️ Edit Product Details" : "Add Single Product"}
               </h3>
               <button
-                onClick={() => { setShowAddModal(false); setEditingProductId(null); setAnkletType(""); }}
+                onClick={() => { setShowAddModal(false); setEditingProductId(null); }}
                 className="text-gray-400 hover:text-gray-700 text-lg font-bold"
               >
                 ✕
