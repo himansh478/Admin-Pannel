@@ -731,7 +731,7 @@ export default function ProductsPage() {
 
   // 7. Filtering & Sorting Memo
   const filteredAndSortedProducts = useMemo(() => {
-    let result = products.filter((p) => {
+    const result = products.filter((p) => {
       // Category filter
       const matchesCategory = filterCategory ? p.category === filterCategory : true;
 
